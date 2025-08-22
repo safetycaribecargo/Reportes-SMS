@@ -11,7 +11,7 @@ header{position:sticky;top:0;background:rgba(255,255,255,.8);backdrop-filter:sat
 .grid{display:grid;gap:16px;grid-template-columns:1.2fr 1fr;margin-top:16px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
 </style></head><body><header><nav class="nav"><div class="brand">
   <img src="assets/logo.png" alt="Caribe Cargo" class="logo" />
-  <span>CARIBE CARGO</span>
+  <span></span>
 </div>
 <div class="menu"><span>Portal Interno</span></div></nav></header><section class="hero"><div class="container"><div class="search-card"><form id="searchForm"><div class="search-row"><input id="reportId" placeholder="Ej.: SDQ-260120251031"/><button class="btn" id="btnBuscar">Buscar</button></div><small>Formato: IATA-DDMMYYYYHHmm</small></form></div><div id="result" class="result"></div></div></section><footer style="text-align:center;color:#64748B;padding:28px">© Garibecargo · Uso interno</footer><script>
 const ID_REGEX=/^[A-Z]{3}-\d{12}$/;function formatDate(i){if(!i)return"";const d=new Date(i);return isNaN(d)?i:d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"})}
