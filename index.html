@@ -31,4 +31,109 @@ async function fetchReport(id){
 }
 const btn=document.getElementById('btnBuscar'), bt=btn.textContent;
 try{btn.textContent='Buscando…';btn.disabled=true;const data=await fetchReport(id);renderReport(data);}catch(e){console.error(e);renderReport(null)}finally{btn.textContent=bt;btn.disabled=false}
-</script></body></html>
+</script><script>
+const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
+const $ = (s) => document.querySelector(s);
+
+function showError(msg){
+  const el = $('#result');
+  el.innerHTML = `<div class="search-card" style="text-align:center"><strong>Error:</strong> ${msg}</div>`;
+  el.classList.add('active');
+}
+function formatDate(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+function renderReport(r){
+  const el = $('#result');
+  if(!r){ el.innerHTML = `<div class="search-card" style="text-align:center">No se encontró ningún reporte con ese ID.</div>`; el.classList.add('active'); return; }
+  const acciones = (r.acciones||[]).map(a=>`<li>• ${a}</li>`).join("") || "<em>—</em>";
+  const updates = (r.updates||[]).map(u=>`<li><time>${formatDate(u.fecha)}</time>${u.texto}</li>`).join("") || "<li><em>Sin actualizaciones</em></li>";
+  el.innerHTML = `
+    <div class="report-header">
+      <div class="report-title">Reporte <span>${r.id||"—"}</span></div>
+      <div class="chip">${r.estado||"Abierto"}</div>
+    </div>
+    <div class="grid">
+      <section class="card">
+        <div class="hd">Datos del reporte</div>
+        <div class="bd">
+          <div class="list">
+            <div class="k">ID</div><div class="v">${r.id||""}</div>
+            <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
+            <div class="k">Estación / Área</div><div class="v">${r.estacion||""}</div>
+            <div class="k">Responsable</div><div class="v">${r.responsable||""}</div>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="hd">Descripción</div>
+        <div class="bd desc">${r.descripcion||""}</div>
+      </section>
+    </div>
+    <div class="grid">
+      <section class="card">
+        <div class="hd">Plan de acción</div>
+        <div class="bd"><ul>${acciones}</ul></div>
+      </section>
+      <section class="card">
+        <div class="hd">Notas de actualización</div>
+        <div class="bd"><ul class="timeline">${updates}</ul></div>
+      </section>
+    </div>`;
+  el.classList.add('active');
+}
+
+async function fetchReport(id){
+  try{
+    const resp = await fetch('/.netlify/functions/airtable?id=' + encodeURIComponent(id));
+    const raw  = await resp.text();               // leo como texto para poder mostrar errores crudos
+    if(!resp.ok){ showError(`Función ${resp.status}: ${raw}`); return null; }
+    const data = JSON.parse(raw);
+    const f = data.fields || {};
+
+    // Normalización de tipos (texto o array)
+    const toArray = (v) => Array.isArray(v) ? v : (v ? [v] : []);
+    const updatesRaw = f["Notas de actualización"] || f["Notas"] || [];
+    const updates = Array.isArray(updatesRaw)
+      ? updatesRaw.map(u => typeof u === "string" ? ({fecha:"", texto:u}) : ({fecha: u.fecha||u.date||"", texto: u.texto||u.note||""}))
+      : [{fecha:"", texto:String(updatesRaw)}];
+
+    return {
+      id: f["ID del reporte"] || id,
+      fecha: f["Fecha de Evento"] || f["Fecha"] || "",
+      estado: f["Estado del reporte"] || "Abierto",
+      responsable: f["Responsable del seguimiento"] || f["Responsable"] || "",
+      estacion: f["Estación"] || f["Estación/Área"] || "",
+      // Cubro variaciones de nombre/capitalización
+      descripcion: f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] || f["Descripción"] || "",
+      acciones: toArray(f["Plan de acción propuesto"] || f["Acciones tomadas"]),
+      updates
+    };
+  }catch(e){
+    showError(e.message);
+    return null;
+  }
+}
+
+$('#searchForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const id = ($('#reportId').value || "").trim().toUpperCase();
+  if(!id) return;
+  if(!ID_REGEX.test(id)){
+    showError('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: SDQ-260120251031).');
+    return;
+  }
+  const btn = $('#btnBuscar');
+  const bt  = btn.textContent;
+  btn.textContent = 'Buscando…'; btn.disabled = true;
+  try{
+    const data = await fetchReport(id);
+    renderReport(data);
+  }finally{
+    btn.textContent = bt; btn.disabled = false;
+  }
+});
+</script>
+</body></html>
