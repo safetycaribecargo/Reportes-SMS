@@ -1,0 +1,1 @@
+Serverless listo. Sube la carpeta a Netlify y agrega AIRTABLE_PAT. Fecha 2025-08-22.
