@@ -1,6 +1,5 @@
-# netlify.toml — minimal and valid
 [build]
-  command = ""      # static site, no build step
+  command = ""
   publish = "."
 
 [functions]
