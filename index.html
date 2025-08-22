@@ -146,19 +146,16 @@
       return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
     }
 
-    // Divide texto en "párrafos" cuando viene como "1. ... 2. ...", o por saltos de línea
+    // Divide texto en "párrafos" cuando viene como "1. ... 2. ...", o con saltos de línea
     function segmentParagraphs(text){
       if(!text) return [];
       let t = String(text).replace(/\r\n/g,"\n").trim();
-      // 1) Dos o más saltos = nuevo párrafo
       let parts = t.split(/\n{2,}/).filter(Boolean);
       if(parts.length <= 1){
-        // 2) Patrón numerado "1. ... 2. ..." → inserta separador antes de cada número
         t = t.replace(/(^|\s)(\d+)\.\s+/g, (m, pre, n) => `${pre}§§§${n}. `);
         parts = t.split(/§§§(?=\d+\.\s*)/).map(s => s.trim()).filter(Boolean);
       }
       if(parts.length <= 1){
-        // 3) Recurso final: por saltos simples
         parts = t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
       }
       return parts;
@@ -187,8 +184,10 @@
               <div class="list">
                 <div class="k">ID</div><div class="v">${r.id||""}</div>
                 <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
+                <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
                 <div class="k">Estación / Área</div><div class="v">${r.estacion||""}</div>
                 <div class="k">Responsable</div><div class="v">${r.responsable||""}</div>
+                <div class="k">Estado</div><div class="v">${r.estado||""}</div>
               </div>
             </div>
           </section>
@@ -226,13 +225,11 @@
         // Normalización (texto o array)
         const toArray = (v) => Array.isArray(v) ? v : (v ? [v] : []);
 
-        // Acciones (acepta string o array)
+        // Acciones (string o array)
         const accionesRaw = f["Plan de acción propuesto"] || f["Acciones tomadas"] || [];
-        const acciones = Array.isArray(accionesRaw)
-          ? accionesRaw
-          : segmentParagraphs(String(accionesRaw));
+        const acciones = Array.isArray(accionesRaw) ? accionesRaw : segmentParagraphs(String(accionesRaw));
 
-        // Updates (acepta string, array de strings, o array de objetos {fecha, texto})
+        // Updates (string, array de strings u objetos {fecha, texto})
         const updRaw = f["Notas de actualización"] || f["Notas"] || [];
         let updates = [];
         if (Array.isArray(updRaw)) {
@@ -250,7 +247,8 @@
         return {
           id: f["ID del reporte"] || id,
           fecha: f["Fecha de Evento"] || f["Fecha"] || "",
-          estado: f["Estado del reporte"] || "Abierto",
+          cierre: f["Fecha estimada de cierre"] || f["Fecha Estimada de Cierre"] || f["Fecha estimada cierre"] || "",
+          estado: f["Estado del reporte"] || f["Estado"] || "Abierto",
           responsable: f["Responsable del seguimiento"] || f["Responsable"] || "",
           estacion: f["Estación"] || f["Estación/Área"] || "",
           descripcion: f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] || f["Descripción"] || "",
