@@ -1,0 +1,34 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Garibecargo</title><style>
+:root{--blue-dark:#002D72;--blue:#00439b;--blue-light:#00AEEF;--card:#fff;--text:#0F172A;--muted:#64748B;--radius:18px;--shadow:0 10px 30px rgba(0,0,0,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+header{position:sticky;top:0;background:rgba(255,255,255,.8);backdrop-filter:saturate(150%) blur(6px);border-bottom:1px solid rgba(2,39,94,.06)}
+.nav{max-width:1100px;margin:0 auto;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;gap:10px;align-items:center;color:var(--blue-dark);font-weight:700;letter-spacing:.06em}.brand .logo{height:24px}
+.container{max-width:1100px;margin:0 auto;padding:40px 20px 70px}.search-card{width:min(880px,100%);margin:24px auto;background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:26px;border:1px solid rgba(2,39,94,.06)}
+.search-row{display:flex;gap:12px;flex-wrap:wrap}.search-row input{flex:1;padding:16px;border-radius:12px;border:1px solid rgba(2,39,94,.15)}
+.btn{border:none;background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;padding:14px 18px;border-radius:12px;font-weight:700;min-width:130px;cursor:pointer}
+.result{display:none;margin:26px auto 0;width:min(100%,1100px)}.result.active{display:block}.card{background:#fff;border-radius:16px;box-shadow:var(--shadow);border:1px solid rgba(2,39,94,.06)}.card .hd{padding:14px 18px;border-bottom:1px solid rgba(2,39,94,.06);color:var(--blue-dark);font-weight:800}.card .bd{padding:18px}
+.grid{display:grid;gap:16px;grid-template-columns:1.2fr 1fr;margin-top:16px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
+</style></head><body><header><nav class="nav"><div class="brand"><img src="assets/logo.svg" class="logo" alt="Caribe Cargo"/><span>CARIBE CARGO</span></div><div class="menu"><span>Portal Interno</span></div></nav></header><section class="hero"><div class="container"><div class="search-card"><form id="searchForm"><div class="search-row"><input id="reportId" placeholder="Ej.: SDQ-260120251031"/><button class="btn" id="btnBuscar">Buscar</button></div><small>Formato: IATA-DDMMYYYYHHmm</small></form></div><div id="result" class="result"></div></div></section><footer style="text-align:center;color:#64748B;padding:28px">© Garibecargo · Uso interno</footer><script>
+const ID_REGEX=/^[A-Z]{3}-\d{12}$/;function formatDate(i){if(!i)return"";const d=new Date(i);return isNaN(d)?i:d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"})}
+function renderReport(r){const el=document.getElementById('result');if(!r){el.innerHTML='<div class="search-card" style="text-align:center">No se encontró ningún reporte con ese ID.</div>';el.classList.add('active');return}
+const acciones=(r.acciones||[]).map(a=>`<li>• ${a}</li>`).join('')||'<em>—</em>';const updates=(r.updates||[]).map(u=>`<li><time>${formatDate(u.fecha)}</time>${u.texto}</li>`).join('')||'<li><em>Sin actualizaciones</em></li>';
+el.innerHTML=`<div class="card"><div class="hd">Reporte ${r.id||'—'}</div><div class="bd"><div class="grid">
+<section><div class="bd"><div><b>Fecha:</b> ${formatDate(r.fecha)||''}</div><div><b>Estación:</b> ${r.estacion||''}</div><div><b>Responsable:</b> ${r.responsable||''}</div></div></section>
+<section><div class="bd"><b>Estado:</b> ${r.estado||'Abierto'}</div></section></div><div style="margin-top:12px"><b>Descripción</b><div>${r.descripcion||''}</div></div>
+<div class="grid" style="margin-top:12px"><section class="card"><div class="hd">Acciones</div><div class="bd"><ul>${acciones}</ul></div></section><section class="card"><div class="hd">Actualizaciones</div><div class="bd"><ul>${updates}</ul></div></section></div></div></div>`;el.classList.add('active')}
+document.getElementById('searchForm').addEventListener('submit',async e=>{e.preventDefault();const id=(document.getElementById('reportId').value||'').trim().toUpperCase();const r=document.getElementById('result');if(!id)return;if(!ID_REGEX.test(id)){r.innerHTML='<div class="search-card" style="text-align:center">Formato de ID no válido.</div>';r.classList.add('active');return;}
+
+async function fetchReport(id){
+  const res=await fetch('/.netlify/functions/airtable?id='+encodeURIComponent(id));
+  if(!res.ok) return null;
+  const data=await res.json(); const f=data.fields||{};
+  const acciones=Array.isArray(f["Plan de acción propuesto"])?f["Plan de acción propuesto"]:(f["Acciones tomadas"]?[f["Acciones tomadas"]]:[]);
+  const updates=Array.isArray(f["Notas de actualización"])?f["Notas de actualización"].map(u=>typeof u==='string'?{fecha:'',texto:u}:{fecha:u.fecha||u.date||'',texto:u.texto||u.note||''}):[];
+  return { id:f["ID del reporte"]||id, fecha:f["Fecha de Evento"]||'', estado:f["Estado del reporte"]||'Abierto',
+           responsable:f["Responsable del seguimiento"]||'', estacion:f["Estación"]||'', descripcion:f["Descripción del suceso"]||'',
+           acciones, updates };
+}
+const btn=document.getElementById('btnBuscar'), bt=btn.textContent;
+try{btn.textContent='Buscando…';btn.disabled=true;const data=await fetchReport(id);renderReport(data);}catch(e){console.error(e);renderReport(null)}finally{btn.textContent=bt;btn.disabled=false}
+</script></body></html>
