@@ -205,7 +205,7 @@
       el.innerHTML = `
         <div class="report-header">
           <div class="report-title">Reporte <span>${r.id||"—"}</span></div>
-          <div class="chip">${r.estado||"Abierto"}</div>
+          <div class="chip ${statusClass(r.estado)}">${statusLabel(r.estado)}</div>
         </div>
 
         <div class="grid">
