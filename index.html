@@ -202,18 +202,23 @@
 
     // Reglas de mapeo de estados (fáciles de extender)
     const STATUS_MAP = [
-      { match: /cerrado/,                             cls: 'chip--cerrado',                      label: 'Cerrado' },
-      { match: /(no[\s-]?iniciado)/,                  cls: 'chip--no-iniciado',                  label: 'No iniciado' },
-      { match: /(en[\s-]?proceso)/,                   cls: 'chip--en-proceso',                   label: 'En proceso' },
-      // Pendiente info del reportante (rojo claro)
-      { match: /(pendiente).*(info|informacion).*(repres)/, cls: 'chip--pendiente-representante-soft', label: 'Pendiente info del reportante' },
-      // Extras opcionales
-      { match: /(abierto|open)/,                      cls: 'chip--abierto',                      label: 'Abierto' },
-      { match: /(observacion|observación)/,           cls: 'chip--observacion',                  label: 'Observación' },
-      { match: /(mitigado|mitigacion|mitigación)/,    cls: 'chip--mitigado',                     label: 'Mitigado' },
-      { match: /(verificacion|verificación)/,         cls: 'chip--verificacion',                 label: 'En verificación' },
-      { match: /(reabierto)/,                         cls: 'chip--reabierto',                    label: 'Reabierto' },
-    ];
+  { match: /cerrado/,                             cls: 'chip--cerrado',                      label: 'Cerrado' },
+  { match: /(no[\s-]?iniciado)/,                  cls: 'chip--no-iniciado',                  label: 'No iniciado' },
+  { match: /(en[\s-]?proceso)/,                   cls: 'chip--en-proceso',                   label: 'En proceso' },
+
+  // 🔴 Rojo claro para "Pendiente info del reportante/representante"
+  // (cubre: reportante, reportador, representante, cualquier cosa que empiece con "report")
+  { match: /(pendiente).*(info|informacion).*(report|reporta|reportante|reportador|repres)/,
+    cls: 'chip--pendiente-representante-soft',
+    label: 'Pendiente info del reportante' },
+
+  // Extras opcionales…
+  { match: /(abierto|open)/,                      cls: 'chip--abierto',                      label: 'Abierto' },
+  { match: /(observacion|observación)/,           cls: 'chip--observacion',                  label: 'Observación' },
+  { match: /(mitigado|mitigacion|mitigación)/,    cls: 'chip--mitigado',                     label: 'Mitigado' },
+  { match: /(verificacion|verificación)/,         cls: 'chip--verificacion',                 label: 'En verificación' },
+  { match: /(reabierto)/,                         cls: 'chip--reabierto',                    label: 'Reabierto' },
+];
 
     function statusClass(estadoRaw){
       const s = normalize(estadoRaw);
