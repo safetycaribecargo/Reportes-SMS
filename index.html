@@ -101,13 +101,12 @@
     }
 
     footer{ text-align:center; color:var(--muted); padding:28px }
-    
-    /* Estados del chip */
-.chip { background: rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25); padding:8px 12px; border-radius:999px; font-weight:700 }
-.chip--cerrado{ background:#16a34a; color:#fff; border-color:#16a34a }                 /* Verde */
-.chip--no-iniciado{ background:#dc2626; color:#fff; border-color:#dc2626 }             /* Rojo fuerte */
-.chip--en-proceso{ background:#f59e0b; color:#111827; border-color:#f59e0b }           /* Amarillo */
-.chip--pendiente-representante{ background:#8B1B3D; color:#fff; border-color:#8B1B3D } /* Rojo vino */
+
+    /* ===== Chips por estado ===== */
+    .chip--cerrado{ background:#16a34a; color:#fff; border:1px solid #16a34a }
+    .chip--no-iniciado{ background:#dc2626; color:#fff; border:1px solid #dc2626 }
+    .chip--en-proceso{ background:#f59e0b; color:#111827; border:1px solid #f59e0b }
+    .chip--pendiente-representante{ background:#8B1B3D; color:#fff; border:1px solid #8B1B3D }
   </style>
 </head>
 
@@ -115,7 +114,6 @@
   <header>
     <nav class="nav">
       <div class="brand">
-        <!-- Cambia a logo.svg si usas SVG -->
         <img src="assets/logo.png" alt="Caribe Cargo" class="logo" />
         <span class="word">CARIBE CARGO</span>
       </div>
@@ -141,6 +139,7 @@
 
   <footer>© Caribe Cargo · Uso interno</footer>
 
+  <!-- ===== Script ÚNICO (no anidar <script> dentro de otro) ===== -->
   <script>
     // ===== Utilidades =====
     const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
@@ -157,40 +156,36 @@
       return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
     }
 
-    // Divide texto en "párrafos" cuando viene como "1. ... 2. ...", o con saltos de línea
+    // Divide texto en párrafos (acepta "1. ..." "2. ..." o saltos de línea)
     function segmentParagraphs(text){
       if(!text) return [];
       let t = String(text).replace(/\r\n/g,"\n").trim();
-      // 1) Dos o más saltos = nuevo párrafo
       let parts = t.split(/\n{2,}/).filter(Boolean);
       if(parts.length <= 1){
-        // 2) Patrón numerado "1. ... 2. ..." → separador antes de cada número
         t = t.replace(/(^|\s)(\d+)\.\s+/g, (m, pre, n) => `${pre}§§§${n}. `);
         parts = t.split(/§§§(?=\d+\.\s*)/).map(s => s.trim()).filter(Boolean);
       }
       if(parts.length <= 1){
-        // 3) Recurso final: por saltos simples
         parts = t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
       }
       return parts;
     }
-<script>
-  function statusClass(estadoRaw){
-    const e = String(estadoRaw || "").toLowerCase().trim();
-    if (e === "cerrado") return "chip--cerrado";
-    if (e === "no iniciado" || e === "no-iniciado") return "chip--no-iniciado";
-    if (e === "en proceso" || e === "en-proceso") return "chip--en-proceso";
-    if (e.includes("pendiente") && e.includes("representante")) return "chip--pendiente-representante";
-    return ""; // por defecto (azulado)
-  }
-  function statusLabel(estadoRaw){
-    // Por si en Airtable lo ponen con variantes
-    const e = String(estadoRaw || "").toLowerCase().trim();
-    if (e === "no-iniciado") return "No iniciado";
-    if (e === "en-proceso")  return "En proceso";
-    return estadoRaw || "Abierto";
-  }
-</script>
+
+    // ===== Mapear estado → clase/etiqueta =====
+    function statusClass(estadoRaw){
+      const e = String(estadoRaw || "").toLowerCase().trim();
+      if (e === "cerrado") return "chip--cerrado";
+      if (e === "no iniciado" || e === "no-iniciado") return "chip--no-iniciado";
+      if (e === "en proceso" || e === "en-proceso") return "chip--en-proceso";
+      if (e.includes("pendiente") && e.includes("representante")) return "chip--pendiente-representante";
+      return "";
+    }
+    function statusLabel(estadoRaw){
+      const e = String(estadoRaw || "").toLowerCase().trim();
+      if (e === "no-iniciado") return "No iniciado";
+      if (e === "en-proceso")  return "En proceso";
+      return estadoRaw || "Abierto";
+    }
 
     // ===== Render =====
     function renderReport(r){
@@ -247,17 +242,17 @@
     async function fetchReport(id){
       try{
         const resp = await fetch('/.netlify/functions/airtable?id=' + encodeURIComponent(id));
-        const raw  = await resp.text(); // para poder mostrar errores crudos
+        const raw  = await resp.text();
         if(!resp.ok){ showError(`Función ${resp.status}: ${raw}`); return null; }
 
         const data = JSON.parse(raw);
         const f = data.fields || {};
 
-        // Acciones (string o array)
+        // Acciones
         const accionesRaw = f["Plan de acción propuesto"] || f["Acciones tomadas"] || [];
         const acciones = Array.isArray(accionesRaw) ? accionesRaw : segmentParagraphs(String(accionesRaw));
 
-        // Updates (string, array de strings u objetos {fecha, texto})
+        // Updates
         const updRaw = f["Notas de actualización"] || f["Notas"] || [];
         let updates = [];
         if (Array.isArray(updRaw)) {
@@ -272,24 +267,37 @@
           segmentParagraphs(String(updRaw)).forEach(p => updates.push({fecha:"", texto:p}));
         }
 
-        // Campo "Fecha estimada de cierre (vigente)" de Airtable (con alias comunes)
+        // Fecha estimada de cierre
         const cierreRaw =
           f["Fecha estimada de cierre (vigente)"] ??
           f["Fecha estimada de cierre"] ??
           f["Fecha Estimada de Cierre"] ??
           f["Fecha estimada cierre"] ?? "";
-
         const cierre =
           (cierreRaw && typeof cierreRaw === "object")
             ? (cierreRaw.start || cierreRaw.date || "")
             : cierreRaw;
+
+        // Responsables (varias posibles columnas/lookup)
+        const responsablePrincipal =
+          f["Responsable"] ||
+          f["Responsable principal"] ||
+          (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) ||
+          "";
+
+        const responsableSeg =
+          f["Responsable del seguimiento"] ||
+          f["Responsable seguimiento"] ||
+          (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) ||
+          "";
 
         return {
           id: f["ID del reporte"] || id,
           fecha: f["Fecha de Evento"] || f["Fecha"] || "",
           cierre,
           estado: f["Estado del reporte"] || f["Estado"] || "Abierto",
-          responsable: f["Responsable del seguimiento"] || f["Responsable"] || "",
+          responsablePrincipal,
+          responsable: responsableSeg,
           estacion: f["Estación"] || f["Estación/Área"] || "",
           descripcion: f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] || f["Descripción"] || "",
           acciones,
