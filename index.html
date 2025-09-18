@@ -157,44 +157,56 @@
 
   <footer>© Caribe Cargo · Uso interno</footer>
 
- <script>
-  // ===== Utilidades =====
-  const ID_REGEX = /^[A-Z]{3}-\d{12}$/; // Formato IATA-DDMMYYYYHHmm
+<script>
+(() => {
+  // ===== Config & helpers =====
+  const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
+  const FN_URL   = '/.netlify/functions/airtable';
   const $ = (s)=>document.querySelector(s);
 
-  function uiMsg(html){
-    const el = $('#result');
-    el.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`;
-    el.classList.add('active');
-  }
-  function formatDate(iso){
+  const ui = {
+    show(html){
+      const r = $('#result');
+      r.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`;
+      r.classList.add('active');
+    }
+  };
+
+  const formatDate = (iso)=>{
     if(!iso) return "";
     const d = new Date(iso);
     return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
+  };
+
+  // Divide texto en párrafos; soporta "1. ..." "2. ..." y saltos de línea
+  function segmentParagraphs(text){
+    if(!text) return [];
+    let t = String(text).replace(/\r\n/g,"\n").trim();
+    // separar por líneas en blanco
+    let parts = t.split(/\n{2,}/).map(s=>s.trim()).filter(Boolean);
+    if(parts.length > 1) return parts;
+    // detectar índices numerados "1. ... 2. ..."
+    t = t.replace(/(^|\n)\s*(\d+)\.\s+/g, (m, pre, n) => `${pre}§§§${n}. `);
+    parts = t.split(/§§§(?=\d+\.\s*)/).map(s=>s.trim()).filter(Boolean);
+    if(parts.length > 1) return parts;
+    // fallback: una línea por renglón
+    return t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
   }
 
   // ===== Render =====
   function renderReport(r){
     const el = $('#result');
-    if(!r){ uiMsg("No se encontró ningún reporte con ese ID."); return; }
+    if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
 
-    const acciones = (r.acciones||[])
-      .filter(Boolean)
-      .map(a=>`<li>${a}</li>`).join("") || "<em>—</em>";
+    const acciones = (r.acciones||[]).filter(Boolean).map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
+    const updates  = (r.updates||[]).filter(u=>u && (u.texto||'').trim()!=='')
+      .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`).join('') || '<li><em>Sin actualizaciones</em></li>';
+    const esCerrado = (r.estado||'').toString().toLowerCase().includes('cerrado');
 
-    const updates  = (r.updates||[])
-      .filter(u => u && (u.texto||"").trim() !== "")
-      .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`)
-      .join("") || "<li><em>Sin actualizaciones</em></li>";
-
-    const esCerrado = (r.estado||"").toString().toLowerCase().includes("cerrado");
-
-    // Bloque de pruebas de cierre si está cerrado
-    let pruebasHTML = "";
+    // --- bloque Pruebas de cierre (si está cerrado y hay fotos)
+    let pruebasHTML = '';
     if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
-      const imgs = r.pruebas
-        .map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`)
-        .join("");
+      const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join('');
       pruebasHTML = `
         <div class="card" style="margin-top:16px">
           <div class="hd">Pruebas de cierre</div>
@@ -202,10 +214,33 @@
         </div>`;
     }
 
+    // --- HTML final (incluye Datos del reporte + Descripción)
     el.innerHTML = `
       <div class="report-header">
         <div>Reporte <strong>${r.id||""}</strong></div>
         <div class="chip-row"><div class="chip">${r.estado||"—"}</div></div>
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <div class="hd">Datos del reporte</div>
+          <div class="bd">
+            <div class="list">
+              <div class="k">ID</div><div class="v">${r.id||""}</div>
+              <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
+              <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
+              <div class="k">Fecha de cierre efectiva</div><div class="v">${formatDate(r.cierreEfectivo)||""}</div>
+              <div class="k">Estación</div><div class="v">${r.estacion||""}</div>
+              <div class="k">Responsable</div><div class="v">${r.responsablePrincipal||""}</div>
+              <div class="k">Responsable de seguimiento</div><div class="v">${r.responsable||""}</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="hd">Descripción del reporte</div>
+          <div class="bd">${r.descripcion || "<em>—</em>"}</div>
+        </section>
       </div>
 
       <div class="grid">
@@ -221,109 +256,131 @@
 
       ${pruebasHTML}
     `;
-    el.classList.add("active");
+    el.classList.add('active');
   }
 
   // ===== Fetch a Netlify Function =====
   async function fetchReport(id){
-    const url = '/.netlify/functions/airtable?id=' + encodeURIComponent(id);
+    const url = `${FN_URL}?id=${encodeURIComponent(id)}`;
     let resp, text;
     try{
       resp = await fetch(url, { headers: { 'Accept': 'application/json' }});
-      text = await resp.text(); // leo texto crudo para mostrarlo si falla
+      text = await resp.text();
     }catch(err){
-      console.error('Network error:', err);
-      uiMsg(`No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
+      ui.show(`❌ No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
       return null;
     }
-
     if(!resp.ok){
-      console.error('Function error:', resp.status, text);
-      uiMsg(`Error ${resp.status} en la función.<br><small>${text}</small>`);
+      ui.show(`❌ Error ${resp.status} en la función.<br><small>${text}</small>`);
       return null;
     }
 
     let data;
-    try{
-      data = JSON.parse(text);
-    }catch(err){
-      console.error('JSON parse error:', err, text);
-      uiMsg(`Respuesta inválida del servidor.<br><small>No se pudo parsear JSON</small>`);
-      return null;
-    }
+    try{ data = JSON.parse(text); }
+    catch(err){ ui.show(`❌ Respuesta inválida del servidor (JSON).`); return null; }
 
     const f = data.fields || {};
 
-    // Acciones: puede venir array o texto largo
+    // --- Acciones (array o texto)
     const acciones =
       Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
-      : f["Plan de acción propuesto"] ? String(f["Plan de acción propuesto"]).split(/\n+/).filter(Boolean)
+      : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
       : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
-      : f["Acciones tomadas"] ? String(f["Acciones tomadas"]).split(/\n+/).filter(Boolean)
+      : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
       : [];
 
-    // Notas: puede venir array de strings
-    const updates =
-      Array.isArray(f["Notas de actualización"])
-        ? f["Notas de actualización"].map(t => ({ texto: t, fecha: "" }))
-        : [];
+    // --- Notas (array de strings o texto largo)
+    let updates = [];
+    const updRaw = f["Notas de actualización"] ?? f["Notas"];
+    if (Array.isArray(updRaw)) {
+      updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" })));
+    } else if (updRaw) {
+      updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
+    }
 
-    // Pruebas de cierre: attachments de Airtable
+    // --- Fechas (Airtable puede devolver objeto date-range)
+    const cierreRaw =
+      f["Fecha estimada de cierre (vigente)"] ??
+      f["Fecha estimada de cierre"] ??
+      f["Fecha Estimada de Cierre"] ?? "";
+    const cierre =
+      (cierreRaw && typeof cierreRaw === "object") ? (cierreRaw.start || cierreRaw.date || "") : cierreRaw;
+
+    const cierreEfRaw =
+      f["Fecha de cierre"] ?? f["Fecha de cierre efectiva"] ?? f["Fecha de Cierre"] ?? "";
+    const cierreEfectivo =
+      (cierreEfRaw && typeof cierreEfRaw === "object") ? (cierreEfRaw.start || cierreEfRaw.date || "") : cierreEfRaw;
+
+    // --- Responsables (varios alias)
+    const responsablePrincipal =
+      f["Responsable"] ||
+      f["Responsable principal"] ||
+      (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
+
+    const responsableSeg =
+      f["Responsable del seguimiento"] ||
+      f["Responsable seguimiento"] ||
+      (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
+
+    // --- Descripción (cubrir variaciones)
+    const descripcion =
+      f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
+      f["Descripción"] || f["Descripcion"] || "";
+
+    // --- Pruebas de cierre (attachments)
     const pruebas = Array.isArray(f["Pruebas de cierre"])
       ? f["Pruebas de cierre"].map(a => ({
-          url: a.url || (a.thumbnails && (a.thumbnails.large?.url || a.thumbnails.full?.url)) || "",
+          url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
           filename: a.filename || "Prueba de cierre"
         })).filter(x => x.url)
       : [];
 
     return {
       id: f["ID del reporte"] || id,
-      estado: f["Estado del reporte"] || "—",
-      acciones, updates, pruebas
+      fecha: f["Fecha de Evento"] || f["Fecha"] || "",
+      cierre,
+      cierreEfectivo,
+      estado: f["Estado del reporte"] || f["Estado"] || "—",
+      responsablePrincipal,
+      responsable: responsableSeg,
+      estacion: f["Estación"] || f["Estación/Área"] || "",
+      descripcion,
+      acciones,
+      updates,
+      pruebas
     };
   }
 
   // ===== Submit =====
-  document.getElementById('searchForm').addEventListener('submit', async (e)=>{
-    e.preventDefault();
-
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const form = document.getElementById('searchForm');
     const input = document.getElementById('reportId');
-    const id = (input.value || "").trim().toUpperCase();
-
-    // Feedback inmediato
-    if(!id){
-      uiMsg("Por favor escribe el <strong>ID del reporte</strong>.");
-      return;
-    }
-    if(!ID_REGEX.test(id)){
-      uiMsg('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: <code>SDQ-260120251031</code>).');
-      return;
-    }
-
     const btn = document.getElementById('btnBuscar');
-    const old = btn.textContent;
-    btn.textContent = 'Buscando…';
-    btn.disabled = true;
-    uiMsg("Buscando reporte…");
 
-    try{
-      const data = await fetchReport(id);
-      if (data) renderReport(data);
-      // si data es null, ya se mostró el error en UI
-    }catch(err){
-      console.error(err);
-      uiMsg(`Ocurrió un error inesperado.<br><small>${err.message}</small>`);
-    }finally{
-      btn.textContent = old;
-      btn.disabled = false;
-    }
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const id = (input.value || '').trim().toUpperCase();
+      if(!id){ ui.show('Por favor escribe el <strong>ID del reporte</strong>.'); return; }
+      if(!ID_REGEX.test(id)){
+        ui.show('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: <code>SDQ-260120251031</code>).');
+        return;
+      }
+
+      const old = btn.textContent;
+      btn.textContent = 'Buscando…'; btn.disabled = true;
+      ui.show('Buscando reporte…');
+
+      try{
+        const data = await fetchReport(id);
+        if (data) renderReport(data);
+      }catch(err){
+        ui.show(`❌ Error inesperado.<br><small>${err.message}</small>`);
+      }finally{
+        btn.textContent = old; btn.disabled = false;
+      }
+    });
   });
-
-  // ==== Tips de diagnóstico si aún “no pasa nada” ====
-  // 1) Abre la consola (F12) y verifica si sale algún error en rojo.
-  // 2) Prueba con un ID que EXISTE y cumpla el regex (ej.: SDQ-260120251031).
-  // 3) Si estás en local, la ruta /.netlify/functions/airtable solo funciona
-  //    con `netlify dev` o ya desplegado en Netlify. En file:// no funcionará.
+})();
 </script>
 </body>
 </html>
