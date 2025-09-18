@@ -157,80 +157,173 @@
 
   <footer>© Caribe Cargo · Uso interno</footer>
 
-  <script>
-    const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
-    const $ = (s)=>document.querySelector(s);
+ <script>
+  // ===== Utilidades =====
+  const ID_REGEX = /^[A-Z]{3}-\d{12}$/; // Formato IATA-DDMMYYYYHHmm
+  const $ = (s)=>document.querySelector(s);
 
-    function formatDate(iso){
-      if(!iso) return "";
-      const d = new Date(iso);
-      return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
+  function uiMsg(html){
+    const el = $('#result');
+    el.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`;
+    el.classList.add('active');
+  }
+  function formatDate(iso){
+    if(!iso) return "";
+    const d = new Date(iso);
+    return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
+  }
+
+  // ===== Render =====
+  function renderReport(r){
+    const el = $('#result');
+    if(!r){ uiMsg("No se encontró ningún reporte con ese ID."); return; }
+
+    const acciones = (r.acciones||[])
+      .filter(Boolean)
+      .map(a=>`<li>${a}</li>`).join("") || "<em>—</em>";
+
+    const updates  = (r.updates||[])
+      .filter(u => u && (u.texto||"").trim() !== "")
+      .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`)
+      .join("") || "<li><em>Sin actualizaciones</em></li>";
+
+    const esCerrado = (r.estado||"").toString().toLowerCase().includes("cerrado");
+
+    // Bloque de pruebas de cierre si está cerrado
+    let pruebasHTML = "";
+    if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
+      const imgs = r.pruebas
+        .map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`)
+        .join("");
+      pruebasHTML = `
+        <div class="card" style="margin-top:16px">
+          <div class="hd">Pruebas de cierre</div>
+          <div class="bd"><div class="galeria">${imgs}</div></div>
+        </div>`;
     }
 
-    // Render reporte
-    function renderReport(r){
-      const el = $('#result');
-      if(!r){ el.innerHTML="<div class='search-card'>No encontrado</div>"; el.classList.add("active"); return; }
+    el.innerHTML = `
+      <div class="report-header">
+        <div>Reporte <strong>${r.id||""}</strong></div>
+        <div class="chip-row"><div class="chip">${r.estado||"—"}</div></div>
+      </div>
 
-      const acciones = (r.acciones||[]).map(a=>`<li>${a}</li>`).join("") || "<em>—</em>";
-      const updates  = (r.updates||[]).map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`).join("") || "<li><em>Sin actualizaciones</em></li>";
+      <div class="grid">
+        <section class="card">
+          <div class="hd">Plan de acción</div>
+          <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
+        </section>
+        <section class="card">
+          <div class="hd">Notas de actualización</div>
+          <div class="bd"><ul class="timeline">${updates}</ul></div>
+        </section>
+      </div>
 
-      const esCerrado = (r.estado||"").toLowerCase().includes("cerrado");
+      ${pruebasHTML}
+    `;
+    el.classList.add("active");
+  }
 
-      // Bloque de pruebas de cierre si está cerrado
-      let pruebasHTML = "";
-      if(esCerrado && r.pruebas && r.pruebas.length){
-        const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join("");
-        pruebasHTML = `
-          <div class="card">
-            <div class="hd">Pruebas de cierre</div>
-            <div class="bd"><div class="galeria">${imgs}</div></div>
-          </div>`;
-      }
-
-      el.innerHTML = `
-        <div class="report-header">
-          <div>Reporte <strong>${r.id||""}</strong></div>
-          <div class="chip-row"><div class="chip">${r.estado}</div></div>
-        </div>
-
-        <div class="grid">
-          <section class="card">
-            <div class="hd">Plan de acción</div>
-            <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
-          </section>
-          <section class="card">
-            <div class="hd">Notas de actualización</div>
-            <div class="bd"><ul class="timeline">${updates}</ul></div>
-          </section>
-        </div>
-
-        ${pruebasHTML}
-      `;
-      el.classList.add("active");
+  // ===== Fetch a Netlify Function =====
+  async function fetchReport(id){
+    const url = '/.netlify/functions/airtable?id=' + encodeURIComponent(id);
+    let resp, text;
+    try{
+      resp = await fetch(url, { headers: { 'Accept': 'application/json' }});
+      text = await resp.text(); // leo texto crudo para mostrarlo si falla
+    }catch(err){
+      console.error('Network error:', err);
+      uiMsg(`No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
+      return null;
     }
 
-    async function fetchReport(id){
-      const resp = await fetch('/.netlify/functions/airtable?id='+encodeURIComponent(id));
-      const data = await resp.json();
-      const f = data.fields||{};
-      const acciones = Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"] : [f["Plan de acción propuesto"]];
-      const updates  = Array.isArray(f["Notas de actualización"]) ? f["Notas de actualización"].map(t=>({texto:t,fecha:""})) : [];
-      const pruebas  = f["Pruebas de cierre"] || []; // 👈 imágenes de Airtable
-
-      return {
-        id: f["ID del reporte"], estado: f["Estado del reporte"],
-        acciones, updates, pruebas
-      };
+    if(!resp.ok){
+      console.error('Function error:', resp.status, text);
+      uiMsg(`Error ${resp.status} en la función.<br><small>${text}</small>`);
+      return null;
     }
 
-    document.getElementById("searchForm").addEventListener("submit",async e=>{
-      e.preventDefault();
-      const id=$('#reportId').value.trim().toUpperCase();
-      if(!ID_REGEX.test(id)){ alert("Formato incorrecto"); return; }
-      const r = await fetchReport(id);
-      renderReport(r);
-    });
-  </script>
+    let data;
+    try{
+      data = JSON.parse(text);
+    }catch(err){
+      console.error('JSON parse error:', err, text);
+      uiMsg(`Respuesta inválida del servidor.<br><small>No se pudo parsear JSON</small>`);
+      return null;
+    }
+
+    const f = data.fields || {};
+
+    // Acciones: puede venir array o texto largo
+    const acciones =
+      Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
+      : f["Plan de acción propuesto"] ? String(f["Plan de acción propuesto"]).split(/\n+/).filter(Boolean)
+      : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
+      : f["Acciones tomadas"] ? String(f["Acciones tomadas"]).split(/\n+/).filter(Boolean)
+      : [];
+
+    // Notas: puede venir array de strings
+    const updates =
+      Array.isArray(f["Notas de actualización"])
+        ? f["Notas de actualización"].map(t => ({ texto: t, fecha: "" }))
+        : [];
+
+    // Pruebas de cierre: attachments de Airtable
+    const pruebas = Array.isArray(f["Pruebas de cierre"])
+      ? f["Pruebas de cierre"].map(a => ({
+          url: a.url || (a.thumbnails && (a.thumbnails.large?.url || a.thumbnails.full?.url)) || "",
+          filename: a.filename || "Prueba de cierre"
+        })).filter(x => x.url)
+      : [];
+
+    return {
+      id: f["ID del reporte"] || id,
+      estado: f["Estado del reporte"] || "—",
+      acciones, updates, pruebas
+    };
+  }
+
+  // ===== Submit =====
+  document.getElementById('searchForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+
+    const input = document.getElementById('reportId');
+    const id = (input.value || "").trim().toUpperCase();
+
+    // Feedback inmediato
+    if(!id){
+      uiMsg("Por favor escribe el <strong>ID del reporte</strong>.");
+      return;
+    }
+    if(!ID_REGEX.test(id)){
+      uiMsg('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: <code>SDQ-260120251031</code>).');
+      return;
+    }
+
+    const btn = document.getElementById('btnBuscar');
+    const old = btn.textContent;
+    btn.textContent = 'Buscando…';
+    btn.disabled = true;
+    uiMsg("Buscando reporte…");
+
+    try{
+      const data = await fetchReport(id);
+      if (data) renderReport(data);
+      // si data es null, ya se mostró el error en UI
+    }catch(err){
+      console.error(err);
+      uiMsg(`Ocurrió un error inesperado.<br><small>${err.message}</small>`);
+    }finally{
+      btn.textContent = old;
+      btn.disabled = false;
+    }
+  });
+
+  // ==== Tips de diagnóstico si aún “no pasa nada” ====
+  // 1) Abre la consola (F12) y verifica si sale algún error en rojo.
+  // 2) Prueba con un ID que EXISTE y cumpla el regex (ej.: SDQ-260120251031).
+  // 3) Si estás en local, la ruta /.netlify/functions/airtable solo funciona
+  //    con `netlify dev` o ya desplegado en Netlify. En file:// no funcionará.
+</script>
 </body>
 </html>
