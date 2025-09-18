@@ -8,17 +8,10 @@
   <style>
     :root{
       --blue-dark:#002D72; --blue:#00439b; --blue-light:#00AEEF;
-      --bg:#ffffff; --card:#ffffff; --text:#0F172A; --muted:#64748B;
-      --border:rgba(2,39,94,.06);
-      --radius:18px; --shadow:0 10px 30px rgba(0,0,0,.08);
-      --logo-h:32px;
-    }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --bg:#0b1220; --card:#0f172a; --text:#E5E7EB; --muted:#94A3B8;
-        --border:rgba(255,255,255,.10);
-        --shadow:0 10px 30px rgba(0,0,0,.45);
-      }
+      --bg:#0b1220; --card:#0f172a; --text:#E5E7EB; --muted:#94A3B8;
+      --border:rgba(255,255,255,.10);
+      --shadow:0 10px 30px rgba(0,0,0,.45);
+      --radius:18px; --logo-h:32px;
     }
 
     *{ box-sizing:border-box }
@@ -27,32 +20,21 @@
       font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
       background:
         radial-gradient(1200px 600px at 120% -20%, rgba(0,174,239,.18), transparent 60%),
-        linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
+        linear-gradient(180deg, #0b1220 0%, #0b1220 100%);
       min-height:100dvh;
     }
 
     header{
       position:sticky; top:0; z-index:5;
-      background:rgba(255,255,255,.85);
+      background:rgba(15,23,42,.75);
       backdrop-filter:saturate(150%) blur(6px);
       border-bottom:1px solid var(--border);
     }
-    @media (prefers-color-scheme: dark){
-      header{ background:rgba(15,23,42,.75); }
-    }
-
     .nav{ max-width:1100px; margin:0 auto; padding:16px 20px; display:flex; align-items:center; justify-content:space-between }
-
-    .brand{
-      display:flex; gap:12px; align-items:center;
-      color:var(--blue-dark); font-weight:800; letter-spacing:.06em;
-    }
+    .brand{ display:flex; gap:12px; align-items:center; color:#cde4ff; font-weight:800; letter-spacing:.06em }
     .brand .logo{ height:var(--logo-h); width:auto; display:block; object-fit:contain }
     .brand .word{ font-size:clamp(16px, 2.2vw, 22px); text-transform:uppercase }
-    @media (max-width:480px){
-      :root{ --logo-h:24px; }
-      .brand .word{ font-size:18px; }
-    }
+    @media (max-width:480px){ :root{ --logo-h:24px; } .brand .word{ font-size:18px } }
 
     .container{ max-width:1100px; margin:0 auto; padding:40px 20px 70px }
 
@@ -74,7 +56,7 @@
     .result.active{ display:block }
 
     .card{ background:var(--card); border-radius:16px; box-shadow:var(--shadow); border:1px solid var(--border) }
-    .card .hd{ padding:14px 18px; border-bottom:1px solid var(--border); color:var(--blue-dark); font-weight:800 }
+    .card .hd{ padding:14px 18px; border-bottom:1px solid var(--border); color:#cde4ff; font-weight:800 }
     .card .bd{ padding:18px }
 
     .grid{ display:grid; gap:16px; grid-template-columns:1.2fr 1fr; margin-top:16px }
@@ -85,13 +67,9 @@
       background:linear-gradient(135deg,var(--blue-dark),var(--blue)); color:#fff;
       padding:18px 22px; border-radius:16px; box-shadow:var(--shadow)
     }
-    .chip{
-      background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25);
-      padding:8px 12px; border-radius:999px; font-weight:700
-    }
+    .chip{ padding:8px 12px; border-radius:999px; font-weight:700; border:1px solid rgba(255,255,255,.35) }
 
-    .chip-row{ display:flex; align-items:center; gap:8px }
-
+    .chip-row{ display:flex; align-items:center; gap:10px }
     .badge{
       background:rgba(255,255,255,.22);
       border:1px solid rgba(255,255,255,.35);
@@ -114,17 +92,17 @@
     .timeline{ list-style:none; margin:0; padding:0 }
     .timeline li{ margin:12px 0; line-height:1.45 }
 
-    footer{ text-align:center; color:var(--muted); padding:28px }
-
     /* ===== Chips por estado ===== */
     .chip--cerrado{ background:#16a34a; color:#fff; border:1px solid #16a34a }
-    .chip--no-iniciado{ background:#dc2626; color:#fff; border:1px solid #dc2626 }
     .chip--en-proceso{ background:#f59e0b; color:#111827; border:1px solid #f59e0b }
+    .chip--no-iniciado{ background:#dc2626; color:#fff; border:1px solid #dc2626 }
     .chip--pendiente-representante-soft{ background:#FECACA; color:#7F1D1D; border:1px solid #FCA5A5 }
 
     /* Galería de pruebas de cierre */
     .galeria{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px }
     .galeria img{ width:100%; height:150px; object-fit:cover; border-radius:8px }
+
+    footer{ text-align:center; color:var(--muted); padding:28px }
   </style>
 </head>
 
@@ -157,229 +135,266 @@
 
   <footer>© Caribe Cargo · Uso interno</footer>
 
-<script>
-(() => {
-  // ===== Config & helpers =====
-  const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
-  const FN_URL   = '/.netlify/functions/airtable';
-  const $ = (s)=>document.querySelector(s);
+  <script>
+  (() => {
+    // ===== Config & helpers =====
+    const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
+    const FN_URL   = '/.netlify/functions/airtable';
+    const $ = (s)=>document.querySelector(s);
 
-  const ui = {
-    show(html){
-      const r = $('#result');
-      r.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`;
-      r.classList.add('active');
-    }
-  };
+    const ui = { show(html){ const r = $('#result'); r.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`; r.classList.add('active'); } };
 
-  const formatDate = (iso)=>{
-    if(!iso) return "";
-    const d = new Date(iso);
-    return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
-  };
-
-  // Divide texto en párrafos; soporta "1. ..." "2. ..." y saltos de línea
-  function segmentParagraphs(text){
-    if(!text) return [];
-    let t = String(text).replace(/\r\n/g,"\n").trim();
-    // separar por líneas en blanco
-    let parts = t.split(/\n{2,}/).map(s=>s.trim()).filter(Boolean);
-    if(parts.length > 1) return parts;
-    // detectar índices numerados "1. ... 2. ..."
-    t = t.replace(/(^|\n)\s*(\d+)\.\s+/g, (m, pre, n) => `${pre}§§§${n}. `);
-    parts = t.split(/§§§(?=\d+\.\s*)/).map(s=>s.trim()).filter(Boolean);
-    if(parts.length > 1) return parts;
-    // fallback: una línea por renglón
-    return t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-  }
-
-  // ===== Render =====
-  function renderReport(r){
-    const el = $('#result');
-    if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
-
-    const acciones = (r.acciones||[]).filter(Boolean).map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
-    const updates  = (r.updates||[]).filter(u=>u && (u.texto||'').trim()!=='')
-      .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`).join('') || '<li><em>Sin actualizaciones</em></li>';
-    const esCerrado = (r.estado||'').toString().toLowerCase().includes('cerrado');
-
-    // --- bloque Pruebas de cierre (si está cerrado y hay fotos)
-    let pruebasHTML = '';
-    if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
-      const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join('');
-      pruebasHTML = `
-        <div class="card" style="margin-top:16px">
-          <div class="hd">Pruebas de cierre</div>
-          <div class="bd"><div class="galeria">${imgs}</div></div>
-        </div>`;
-    }
-
-    // --- HTML final (incluye Datos del reporte + Descripción)
-    el.innerHTML = `
-      <div class="report-header">
-        <div>Reporte <strong>${r.id||""}</strong></div>
-        <div class="chip-row"><div class="chip">${r.estado||"—"}</div></div>
-      </div>
-
-      <div class="grid">
-        <section class="card">
-          <div class="hd">Datos del reporte</div>
-          <div class="bd">
-            <div class="list">
-              <div class="k">ID</div><div class="v">${r.id||""}</div>
-              <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
-              <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
-              <div class="k">Estación</div><div class="v">${r.estacion||""}</div>
-              <div class="k">Responsable</div><div class="v">${r.responsablePrincipal||""}</div>
-              <div class="k">Responsable de seguimiento</div><div class="v">${r.responsable||""}</div>
-            </div>
-          </div>
-        </section>
-
-        <section class="card">
-          <div class="hd">Descripción del reporte</div>
-          <div class="bd">${r.descripcion || "<em>—</em>"}</div>
-        </section>
-      </div>
-
-      <div class="grid">
-        <section class="card">
-          <div class="hd">Plan de acción</div>
-          <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
-        </section>
-        <section class="card">
-          <div class="hd">Notas de actualización</div>
-          <div class="bd"><ul class="timeline">${updates}</ul></div>
-        </section>
-      </div>
-
-      ${pruebasHTML}
-    `;
-    el.classList.add('active');
-  }
-
-  // ===== Fetch a Netlify Function =====
-  async function fetchReport(id){
-    const url = `${FN_URL}?id=${encodeURIComponent(id)}`;
-    let resp, text;
-    try{
-      resp = await fetch(url, { headers: { 'Accept': 'application/json' }});
-      text = await resp.text();
-    }catch(err){
-      ui.show(`❌ No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
-      return null;
-    }
-    if(!resp.ok){
-      ui.show(`❌ Error ${resp.status} en la función.<br><small>${text}</small>`);
-      return null;
-    }
-
-    let data;
-    try{ data = JSON.parse(text); }
-    catch(err){ ui.show(`❌ Respuesta inválida del servidor (JSON).`); return null; }
-
-    const f = data.fields || {};
-
-    // --- Acciones (array o texto)
-    const acciones =
-      Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
-      : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
-      : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
-      : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
-      : [];
-
-    // --- Notas (array de strings o texto largo)
-    let updates = [];
-    const updRaw = f["Notas de actualización"] ?? f["Notas"];
-    if (Array.isArray(updRaw)) {
-      updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" })));
-    } else if (updRaw) {
-      updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
-    }
-
-    // --- Fechas (Airtable puede devolver objeto date-range)
-    const cierreRaw =
-      f["Fecha estimada de cierre (vigente)"] ??
-      f["Fecha estimada de cierre"] ??
-      f["Fecha Estimada de Cierre"] ?? "";
-    const cierre =
-      (cierreRaw && typeof cierreRaw === "object") ? (cierreRaw.start || cierreRaw.date || "") : cierreRaw;
-
-    const cierreEfRaw =
-      f["Fecha de cierre"] ?? f["Fecha de cierre efectiva"] ?? f["Fecha de Cierre"] ?? "";
-    const cierreEfectivo =
-      (cierreEfRaw && typeof cierreEfRaw === "object") ? (cierreEfRaw.start || cierreEfRaw.date || "") : cierreEfRaw;
-
-    // --- Responsables (varios alias)
-    const responsablePrincipal =
-      f["Responsable"] ||
-      f["Responsable principal"] ||
-      (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
-
-    const responsableSeg =
-      f["Responsable del seguimiento"] ||
-      f["Responsable seguimiento"] ||
-      (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
-
-    // --- Descripción (cubrir variaciones)
-    const descripcion =
-      f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
-      f["Descripción"] || f["Descripcion"] || "";
-
-    // --- Pruebas de cierre (attachments)
-    const pruebas = Array.isArray(f["Pruebas de cierre"])
-      ? f["Pruebas de cierre"].map(a => ({
-          url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
-          filename: a.filename || "Prueba de cierre"
-        })).filter(x => x.url)
-      : [];
-
-    return {
-      id: f["ID del reporte"] || id,
-      fecha: f["Fecha de Evento"] || f["Fecha"] || "",
-      cierre,
-      cierreEfectivo,
-      estado: f["Estado del reporte"] || f["Estado"] || "—",
-      responsablePrincipal,
-      responsable: responsableSeg,
-      estacion: f["Estación"] || f["Estación/Área"] || "",
-      descripcion,
-      acciones,
-      updates,
-      pruebas
+    const formatDate = (iso)=>{
+      if(!iso) return "";
+      const d = new Date(iso);
+      return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
     };
-  }
 
-  // ===== Submit =====
-  window.addEventListener('DOMContentLoaded', ()=>{
-    const form = document.getElementById('searchForm');
-    const input = document.getElementById('reportId');
-    const btn = document.getElementById('btnBuscar');
+    // Normaliza texto
+    function normalize(x){
+      return (x||'').toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().trim();
+    }
 
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const id = (input.value || '').trim().toUpperCase();
-      if(!id){ ui.show('Por favor escribe el <strong>ID del reporte</strong>.'); return; }
-      if(!ID_REGEX.test(id)){
-        ui.show('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: <code>SDQ-260120251031</code>).');
-        return;
+    // Estado -> clase + etiqueta
+    const STATUS_MAP = [
+      { match: /cerrad/, cls: 'chip--cerrado', label: 'Cerrado' },
+      { match: /(no[\s-]?iniciado)/, cls: 'chip--no-iniciado', label: 'No iniciado' },
+      { match: /(en[\s-]?proceso)/, cls: 'chip--en-proceso', label: 'En proceso' },
+      { match: /(pendiente).*(info|informaci[oó]n).*(report|reporta|reportante|reportador|repres)/,
+        cls: 'chip--pendiente-representante-soft',
+        label: 'Pendiente info del reportante' },
+    ];
+    function statusClass(estado){
+      const s = normalize(estado);
+      for (const r of STATUS_MAP){ if (r.match.test(s)) return r.cls; }
+      return '';
+    }
+    function statusLabel(estado){
+      const s = normalize(estado);
+      for (const r of STATUS_MAP){ if (r.match.test(s)) return r.label; }
+      return estado || '—';
+    }
+
+    // Divide texto en párrafos; soporta "1. ..." "2. ..." y saltos de línea
+    function segmentParagraphs(text){
+      if(!text) return [];
+      let t = String(text).replace(/\r\n/g,"\n").trim();
+      let parts = t.split(/\n{2,}/).map(s=>s.trim()).filter(Boolean);
+      if(parts.length > 1) return parts;
+      t = t.replace(/(^|\n)\s*(\d+)\.\s+/g, (m, pre, n) => `${pre}§§§${n}. `);
+      parts = t.split(/§§§(?=\d+\.\s*)/).map(s=>s.trim()).filter(Boolean);
+      if(parts.length > 1) return parts;
+      return t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    }
+
+    // ===== Render =====
+    function renderReport(r){
+      const el = $('#result');
+      if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
+
+      // plan de acción: limpiar viñetas manuales "•", "-", "*"
+      const acciones = (r.acciones||[])
+        .map(a => String(a).replace(/^[•\-\*]\s*/,'').trim())
+        .filter(Boolean)
+        .map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
+
+      const updates  = (r.updates||[])
+        .filter(u=>u && (u.texto||'').trim()!=='')
+        .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`)
+        .join('') || '<li><em>Sin actualizaciones</em></li>';
+
+      const statusCls = statusClass(r.estado);
+      const statusTxt = statusLabel(r.estado);
+      const badgeCierre = /cerrad/i.test(r.estado || '')
+        ? `<span class="badge">Cerrado: ${formatDate(r.cierreEfectivo || r.cierre) || ""}</span>`
+        : "";
+
+      // --- bloque Pruebas de cierre (si está cerrado y hay fotos)
+      let pruebasHTML = '';
+      const esCerrado = /cerrad/i.test(r.estado || '');
+      if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
+        const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join('');
+        pruebasHTML = `
+          <div class="card" style="margin-top:16px">
+            <div class="hd">Pruebas de cierre</div>
+            <div class="bd"><div class="galeria">${imgs}</div></div>
+          </div>`;
       }
 
-      const old = btn.textContent;
-      btn.textContent = 'Buscando…'; btn.disabled = true;
-      ui.show('Buscando reporte…');
+      el.innerHTML = `
+        <div class="report-header">
+          <div>Reporte <strong>${r.id||""}</strong></div>
+          <div class="chip-row">
+            <div class="chip ${statusCls}">${statusTxt}</div>
+            ${badgeCierre}
+          </div>
+        </div>
 
+        <div class="grid">
+          <section class="card">
+            <div class="hd">Datos del reporte</div>
+            <div class="bd">
+              <div class="list">
+                <div class="k">ID</div><div class="v">${r.id||""}</div>
+                <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
+                <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
+                <div class="k">Fecha de cierre efectiva</div><div class="v">${formatDate(r.cierreEfectivo)||""}</div>
+                <div class="k">Estación</div><div class="v">${r.estacion||""}</div>
+                <div class="k">Responsable</div><div class="v">${r.responsablePrincipal||""}</div>
+                <div class="k">Responsable de seguimiento</div><div class="v">${r.responsable||""}</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="hd">Descripción del reporte</div>
+            <div class="bd">${r.descripcion || "<em>—</em>"}</div>
+          </section>
+        </div>
+
+        <div class="grid">
+          <section class="card">
+            <div class="hd">Plan de acción</div>
+            <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
+          </section>
+          <section class="card">
+            <div class="hd">Notas de actualización</div>
+            <div class="bd"><ul class="timeline">${updates}</ul></div>
+          </section>
+        </div>
+
+        ${pruebasHTML}
+      `;
+      el.classList.add('active');
+    }
+
+    // ===== Fetch a Netlify Function =====
+    async function fetchReport(id){
+      const url = `${FN_URL}?id=${encodeURIComponent(id)}`;
+      let resp, text;
       try{
-        const data = await fetchReport(id);
-        if (data) renderReport(data);
+        resp = await fetch(url, { headers: { 'Accept': 'application/json' }});
+        text = await resp.text();
       }catch(err){
-        ui.show(`❌ Error inesperado.<br><small>${err.message}</small>`);
-      }finally{
-        btn.textContent = old; btn.disabled = false;
+        ui.show(`❌ No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
+        return null;
       }
+      if(!resp.ok){
+        ui.show(`❌ Error ${resp.status} en la función.<br><small>${text}</small>`);
+        return null;
+      }
+
+      let data;
+      try{ data = JSON.parse(text); }
+      catch(err){ ui.show(`❌ Respuesta inválida del servidor (JSON).`); return null; }
+
+      const f = data.fields || {};
+
+      // --- Acciones (array o texto)
+      const acciones =
+        Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
+        : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
+        : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
+        : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
+        : [];
+
+      // --- Notas (array de strings o texto largo)
+      let updates = [];
+      const updRaw = f["Notas de actualización"] ?? f["Notas"];
+      if (Array.isArray(updRaw)) {
+        updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" })));
+      } else if (updRaw) {
+        updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
+      }
+
+      // --- Fechas (Airtable puede devolver objeto date-range)
+      const cierreRaw =
+        f["Fecha estimada de cierre (vigente)"] ??
+        f["Fecha estimada de cierre"] ??
+        f["Fecha Estimada de Cierre"] ?? "";
+      const cierre =
+        (cierreRaw && typeof cierreRaw === "object") ? (cierreRaw.start || cierreRaw.date || "") : cierreRaw;
+
+      const cierreEfRaw =
+        f["Fecha de cierre"] ?? f["Fecha de cierre efectiva"] ?? f["Fecha de Cierre"] ?? "";
+      const cierreEfectivo =
+        (cierreEfRaw && typeof cierreEfRaw === "object") ? (cierreEfRaw.start || cierreEfRaw.date || "") : cierreEfRaw;
+
+      // --- Responsables (varios alias)
+      const responsablePrincipal =
+        f["Responsable"] ||
+        f["Responsable principal"] ||
+        (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
+
+      const responsableSeg =
+        f["Responsable del seguimiento"] ||
+        f["Responsable seguimiento"] ||
+        (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
+
+      // --- Descripción (cubrir variaciones)
+      const descripcion =
+        f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
+        f["Descripción"] || f["Descripcion"] || "";
+
+      // --- Estación
+      const estacion = f["Estación"] || f["Estación/Área"] || "";
+
+      // --- Pruebas de cierre (attachments)
+      const pruebas = Array.isArray(f["Pruebas de cierre"])
+        ? f["Pruebas de cierre"].map(a => ({
+            url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
+            filename: a.filename || "Prueba de cierre"
+          })).filter(x => x.url)
+        : [];
+
+      return {
+        id: f["ID del reporte"] || id,
+        fecha: f["Fecha de Evento"] || f["Fecha"] || "",
+        cierre,
+        cierreEfectivo,
+        estado: f["Estado del reporte"] || f["Estado"] || "—",
+        responsablePrincipal,
+        responsable: responsableSeg,
+        estacion,
+        descripcion,
+        acciones,
+        updates,
+        pruebas
+      };
+    }
+
+    // ===== Submit =====
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const form = document.getElementById('searchForm');
+      const input = document.getElementById('reportId');
+      const btn = document.getElementById('btnBuscar');
+
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const id = (input.value || '').trim().toUpperCase();
+        if(!id){ ui.show('Por favor escribe el <strong>ID del reporte</strong>.'); return; }
+        if(!ID_REGEX.test(id)){
+          ui.show('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: <code>SDQ-260120251031</code>).');
+          return;
+        }
+
+        const old = btn.textContent;
+        btn.textContent = 'Buscando…'; btn.disabled = true;
+        ui.show('Buscando reporte…');
+
+        try{
+          const data = await fetchReport(id);
+          if (data) renderReport(data);
+        }catch(err){
+          ui.show(`❌ Error inesperado.<br><small>${err.message}</small>`);
+        }finally{
+          btn.textContent = old; btn.disabled = false;
+        }
+      });
     });
-  });
-})();
-</script>
+  })();
+  </script>
 </body>
 </html>
