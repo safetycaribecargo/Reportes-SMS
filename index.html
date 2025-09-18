@@ -106,11 +106,13 @@
     .list .k{ color:var(--muted); font-size:13px }
     .list .v{ font-weight:600 }
 
-    .timeline{ margin:0; padding:0; list-style:none }
-    .timeline li{ position:relative; padding-left:18px; margin:12px 0; line-height:1.45 }
-    .timeline li::before{
-      content:""; position:absolute; left:0; top:.55em; width:8px; height:8px; border-radius:50%; background:var(--blue-light)
-    }
+    /* ===== Plan de acción: UNA sola viñeta azul ===== */
+    .plan-accion{ list-style:disc; padding-left:20px }
+    .plan-accion li::marker{ color:var(--blue-light) }
+
+    /* ===== Notas: sin viñetas ===== */
+    .timeline{ list-style:none; margin:0; padding:0 }
+    .timeline li{ margin:12px 0; line-height:1.45 }
 
     footer{ text-align:center; color:var(--muted); padding:28px }
 
@@ -118,17 +120,11 @@
     .chip--cerrado{ background:#16a34a; color:#fff; border:1px solid #16a34a }
     .chip--no-iniciado{ background:#dc2626; color:#fff; border:1px solid #dc2626 }
     .chip--en-proceso{ background:#f59e0b; color:#111827; border:1px solid #f59e0b }
-    /* rojo vino anterior (si lo quieres mantener en algún uso) */
-    .chip--pendiente-representante{ background:#8B1B3D; color:#fff; border:1px solid #8B1B3D }
-    /* rojo claro (nuevo solicitado) */
     .chip--pendiente-representante-soft{ background:#FECACA; color:#7F1D1D; border:1px solid #FCA5A5 }
 
-    /* otros colores opcionales por si los usas */
-    .chip--abierto{ background:#E0F2FE; color:#075985; border:1px solid #7DD3FC }
-    .chip--observacion{ background:#E5E7EB; color:#334155; border:1px solid #CBD5E1 }
-    .chip--mitigado{ background:#CCFBF1; color:#115E59; border:1px solid #99F6E4 }
-    .chip--verificacion{ background:#EDE9FE; color:#5B21B6; border:1px solid #DDD6FE }
-    .chip--reabierto{ background:#FEF3C7; color:#92400E; border:1px solid #FDE68A }
+    /* Galería de pruebas de cierre */
+    .galeria{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px }
+    .galeria img{ width:100%; height:150px; object-fit:cover; border-radius:8px }
   </style>
 </head>
 
@@ -161,236 +157,79 @@
 
   <footer>© Caribe Cargo · Uso interno</footer>
 
-  <!-- ===== Script ÚNICO ===== -->
   <script>
-    // ===== Utilidades =====
     const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
-    const $ = (s) => document.querySelector(s);
+    const $ = (s)=>document.querySelector(s);
 
-    function showError(msg){
-      const el = $('#result');
-      el.innerHTML = `<div class="search-card" style="text-align:center"><strong>Error:</strong> ${msg}</div>`;
-      el.classList.add('active');
-    }
     function formatDate(iso){
       if(!iso) return "";
       const d = new Date(iso);
       return isNaN(d) ? iso : d.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"});
     }
 
-    // Divide texto en párrafos (acepta "1. ..." "2. ..." o saltos de línea)
-    function segmentParagraphs(text){
-      if(!text) return [];
-      let t = String(text).replace(/\r\n/g,"\n").trim();
-      let parts = t.split(/\n{2,}/).filter(Boolean);
-      if(parts.length <= 1){
-        t = t.replace(/(^|\s)(\d+)\.\s+/g, (m, pre, n) => `${pre}§§§${n}. `);
-        parts = t.split(/§§§(?=\d+\.\s*)/).map(s => s.trim()).filter(Boolean);
-      }
-      if(parts.length <= 1){
-        parts = t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-      }
-      return parts;
-    }
-
-    // Normaliza strings (minúsculas, sin acentos)
-    function normalize(x){
-      return (x||'').toString()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-        .toLowerCase().trim();
-    }
-
-    // Reglas de mapeo de estados (fáciles de extender)
-    const STATUS_MAP = [
-  { match: /cerrado/,                             cls: 'chip--cerrado',                      label: 'Cerrado' },
-  { match: /(no[\s-]?iniciado)/,                  cls: 'chip--no-iniciado',                  label: 'No iniciado' },
-  { match: /(en[\s-]?proceso)/,                   cls: 'chip--en-proceso',                   label: 'En proceso' },
-
-  // 🔴 Rojo claro para "Pendiente info del reportante/representante"
-  // (cubre: reportante, reportador, representante, cualquier cosa que empiece con "report")
-  { match: /(pendiente).*(info|informacion).*(report|reporta|reportante|reportador|repres)/,
-    cls: 'chip--pendiente-representante-soft',
-    label: 'Pendiente info del reportante' },
-
-  // Extras opcionales…
-  { match: /(abierto|open)/,                      cls: 'chip--abierto',                      label: 'Abierto' },
-  { match: /(observacion|observación)/,           cls: 'chip--observacion',                  label: 'Observación' },
-  { match: /(mitigado|mitigacion|mitigación)/,    cls: 'chip--mitigado',                     label: 'Mitigado' },
-  { match: /(verificacion|verificación)/,         cls: 'chip--verificacion',                 label: 'En verificación' },
-  { match: /(reabierto)/,                         cls: 'chip--reabierto',                    label: 'Reabierto' },
-];
-
-    function statusClass(estadoRaw){
-      const s = normalize(estadoRaw);
-      for (const r of STATUS_MAP){ if (r.match.test(s)) return r.cls; }
-      return ''; // estilo por defecto (chip azulado)
-    }
-    function statusLabel(estadoRaw){
-      const s = normalize(estadoRaw);
-      for (const r of STATUS_MAP){ if (r.match.test(s)) return r.label; }
-      return estadoRaw || 'Abierto';
-    }
-
-    // ===== Render =====
+    // Render reporte
     function renderReport(r){
       const el = $('#result');
-      if(!r){
-        el.innerHTML = `<div class="search-card" style="text-align:center">No se encontró ningún reporte con ese ID.</div>`;
-        el.classList.add('active'); return;
-      }
-      const acciones = (r.acciones||[]).map(a=>`<li>• ${a}</li>`).join("") || "<em>—</em>";
-      const updates = (r.updates||[]).map(u=>`<li><time>${formatDate(u.fecha)}</time>${u.texto}</li>`).join("") || "<li><em>Sin actualizaciones</em></li>";
+      if(!r){ el.innerHTML="<div class='search-card'>No encontrado</div>"; el.classList.add("active"); return; }
 
-      const esCerrado = normalize(r.estado) === "cerrado";
-      const badgeCierre = esCerrado
-        ? `<span class="badge">Cerrado: ${formatDate(r.cierreEfectivo || r.cierre) || ""}</span>`
-        : "";
+      const acciones = (r.acciones||[]).map(a=>`<li>${a}</li>`).join("") || "<em>—</em>";
+      const updates  = (r.updates||[]).map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`).join("") || "<li><em>Sin actualizaciones</em></li>";
+
+      const esCerrado = (r.estado||"").toLowerCase().includes("cerrado");
+
+      // Bloque de pruebas de cierre si está cerrado
+      let pruebasHTML = "";
+      if(esCerrado && r.pruebas && r.pruebas.length){
+        const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join("");
+        pruebasHTML = `
+          <div class="card">
+            <div class="hd">Pruebas de cierre</div>
+            <div class="bd"><div class="galeria">${imgs}</div></div>
+          </div>`;
+      }
 
       el.innerHTML = `
         <div class="report-header">
-          <div class="report-title">Reporte <span>${r.id||"—"}</span></div>
-          <div class="chip-row">
-            <div class="chip ${statusClass(r.estado)}">${statusLabel(r.estado)}</div>
-            ${badgeCierre}
-          </div>
-        </div>
-
-        <div class="grid">
-          <section class="card">
-            <div class="hd">Datos del reporte</div>
-            <div class="bd">
-              <div class="list">
-                <div class="k">ID</div><div class="v">${r.id||""}</div>
-                <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
-                <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
-                <div class="k">Estación</div><div class="v">${r.estacion||""}</div>
-                <div class="k">Responsable</div><div class="v">${r.responsablePrincipal||""}</div>
-                <div class="k">Responsable de seguimiento</div><div class="v">${r.responsable||""}</div>
-              </div>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="hd">Descripción del reporte</div>
-            <div class="bd">${r.descripcion||""}</div>
-          </section>
+          <div>Reporte <strong>${r.id||""}</strong></div>
+          <div class="chip-row"><div class="chip">${r.estado}</div></div>
         </div>
 
         <div class="grid">
           <section class="card">
             <div class="hd">Plan de acción</div>
-            <div class="bd"><ul>${acciones}</ul></div>
+            <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
           </section>
           <section class="card">
             <div class="hd">Notas de actualización</div>
             <div class="bd"><ul class="timeline">${updates}</ul></div>
           </section>
         </div>
+
+        ${pruebasHTML}
       `;
-      el.classList.add('active');
+      el.classList.add("active");
     }
 
-    // ===== Fetch a la función serverless =====
     async function fetchReport(id){
-      try{
-        const resp = await fetch('/.netlify/functions/airtable?id=' + encodeURIComponent(id));
-        const raw  = await resp.text(); // permite mostrar errores crudos
-        if(!resp.ok){ showError(`Función ${resp.status}: ${raw}`); return null; }
+      const resp = await fetch('/.netlify/functions/airtable?id='+encodeURIComponent(id));
+      const data = await resp.json();
+      const f = data.fields||{};
+      const acciones = Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"] : [f["Plan de acción propuesto"]];
+      const updates  = Array.isArray(f["Notas de actualización"]) ? f["Notas de actualización"].map(t=>({texto:t,fecha:""})) : [];
+      const pruebas  = f["Pruebas de cierre"] || []; // 👈 imágenes de Airtable
 
-        const data = JSON.parse(raw);
-        const f = data.fields || {};
-
-        // Acciones
-        const accionesRaw = f["Plan de acción propuesto"] || f["Acciones tomadas"] || [];
-        const acciones = Array.isArray(accionesRaw) ? accionesRaw : segmentParagraphs(String(accionesRaw));
-
-        // Updates
-        const updRaw = f["Notas de actualización"] || f["Notas"] || [];
-        let updates = [];
-        if (Array.isArray(updRaw)) {
-          updRaw.forEach(u => {
-            if (typeof u === "string") {
-              segmentParagraphs(u).forEach(p => updates.push({fecha:"", texto:p}));
-            } else if (u && (u.texto || u.note)) {
-              updates.push({ fecha: u.fecha || u.date || "", texto: u.texto || u.note || "" });
-            }
-          });
-        } else if (updRaw) {
-          segmentParagraphs(String(updRaw)).forEach(p => updates.push({fecha:"", texto:p}));
-        }
-
-        // Fecha estimada de cierre (posibles alias de campo)
-        const cierreRaw =
-          f["Fecha estimada de cierre (vigente)"] ??
-          f["Fecha estimada de cierre"] ??
-          f["Fecha Estimada de Cierre"] ??
-          f["Fecha estimada cierre"] ?? "";
-        const cierre =
-          (cierreRaw && typeof cierreRaw === "object")
-            ? (cierreRaw.start || cierreRaw.date || "")
-            : cierreRaw;
-
-        // Fecha de cierre efectiva (real)
-        const cierreEfectivoRaw =
-          f["Fecha de cierre"] ??
-          f["Fecha de cierre efectiva"] ??
-          f["Fecha de Cierre"] ??
-          f["Fecha de cierre (real)"] ?? "";
-        const cierreEfectivo =
-          (cierreEfectivoRaw && typeof cierreEfectivoRaw === "object")
-            ? (cierreEfectivoRaw.start || cierreEfectivoRaw.date || "")
-            : cierreEfectivoRaw;
-
-        // Responsables (varias posibles columnas/lookup)
-        const responsablePrincipal =
-          f["Responsable"] ||
-          f["Responsable principal"] ||
-          (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) ||
-          "";
-
-        const responsableSeg =
-          f["Responsable del seguimiento"] ||
-          f["Responsable seguimiento"] ||
-          (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) ||
-          "";
-
-        return {
-          id: f["ID del reporte"] || id,
-          fecha: f["Fecha de Evento"] || f["Fecha"] || "",
-          cierre,
-          cierreEfectivo,
-          estado: f["Estado del reporte"] || f["Estado"] || "Abierto",
-          responsablePrincipal,
-          responsable: responsableSeg,
-          estacion: f["Estación"] || f["Estación/Área"] || "",
-          descripcion: f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] || f["Descripción"] || "",
-          acciones,
-          updates
-        };
-      }catch(e){
-        showError(e.message);
-        return null;
-      }
+      return {
+        id: f["ID del reporte"], estado: f["Estado del reporte"],
+        acciones, updates, pruebas
+      };
     }
 
-    // ===== Submit =====
-    document.getElementById('searchForm').addEventListener('submit', async (e)=>{
+    document.getElementById("searchForm").addEventListener("submit",async e=>{
       e.preventDefault();
-      const id = (document.getElementById('reportId').value || "").trim().toUpperCase();
-      if(!id) return;
-      if(!ID_REGEX.test(id)){
-        showError('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: SDQ-260120251031).');
-        return;
-      }
-      const btn = document.getElementById('btnBuscar');
-      const bt  = btn.textContent;
-      btn.textContent = 'Buscando…'; btn.disabled = true;
-      try{
-        const data = await fetchReport(id);
-        renderReport(data);
-      } finally {
-        btn.textContent = bt; btn.disabled = false;
-      }
+      const id=$('#reportId').value.trim().toUpperCase();
+      if(!ID_REGEX.test(id)){ alert("Formato incorrecto"); return; }
+      const r = await fetchReport(id);
+      renderReport(r);
     });
   </script>
 </body>
