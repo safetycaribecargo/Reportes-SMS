@@ -6,23 +6,42 @@
   <title>Caribe Cargo · Portal Interno</title>
 
   <style>
-    :root{
-      --blue-dark:#002D72; --blue:#00439b; --blue-light:#00AEEF;
-      --bg:#0b1220; --card:#0f172a; --text:#E5E7EB; --muted:#94A3B8;
-      --border:rgba(255,255,255,.10);
-      --shadow:0 10px 30px rgba(0,0,0,.45);
-      --radius:18px; --logo-h:32px;
-    }
+    :root {
+  --blue-dark:#002D72; 
+  --blue:#00439b; 
+  --blue-light:#00AEEF;
 
-    *{ box-sizing:border-box }
-    body{
-      margin:0; color:var(--text);
-      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-      background:
-        radial-gradient(1200px 600px at 120% -20%, rgba(0,174,239,.18), transparent 60%),
-        linear-gradient(180deg, #0b1220 0%, #0b1220 100%);
-      min-height:100dvh;
-    }
+  /* valores por defecto (modo claro) */
+  --bg:#ffffff; 
+  --card:#f5f7fa; 
+  --text:#111827; 
+  --muted:#374151; 
+  --border:rgba(0,0,0,.10); 
+  --shadow:0 10px 30px rgba(0,0,0,.15);
+  --radius:18px; 
+  --logo-h:32px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#0b1220; 
+    --card:#0f172a; 
+    --text:#E5E7EB; 
+    --muted:#94A3B8; 
+    --border:rgba(255,255,255,.10); 
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+}
+
+body {
+  margin:0; 
+  color:var(--text);
+  font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  background:
+    radial-gradient(1200px 600px at 120% -20%, rgba(0,174,239,.18), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
+  min-height:100dvh;
+}
 
     header{
       position:sticky; top:0; z-index:5;
