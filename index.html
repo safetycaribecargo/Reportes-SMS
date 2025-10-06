@@ -348,17 +348,30 @@ body {
       }
 
       // --- Fechas (Airtable puede devolver objeto date-range)
-      const cierreRaw =
-        f["Fecha estimada de cierre (vigente)"] ??
-        f["Fecha estimada de cierre"] ??
-        f["Fecha Estimada de Cierre"] ?? "";
-      const cierre =
-        (cierreRaw && typeof cierreRaw === "object") ? (cierreRaw.start || cierreRaw.date || "") : cierreRaw;
+const cierreRaw =
+  f["Fecha estimada de cierre (vigente)"] ??
+  f["Fecha estimada de cierre"] ??
+  f["Fecha Estimada de Cierre"] ?? "";
 
-      const cierreEfRaw =
-        f["Fecha de cierre"] ?? f["Fecha de cierre efectiva"] ?? f["Fecha de Cierre"] ?? "";
-      const cierreEfectivo =
-        (cierreEfRaw && typeof cierreEfRaw === "object") ? (cierreEfRaw.start || cierreEfRaw.date || "") : cierreEfRaw;
+const cierre =
+  (cierreRaw && typeof cierreRaw === "object")
+    ? (cierreRaw.start || cierreRaw.date || "")
+    : cierreRaw;
+
+// Priorizar siempre la REAL de cierre
+const cierreRealRaw =
+  f["Fecha real de cierre"] ??
+  f["Fecha Real de Cierre"] ??
+  f["Fecha de cierre real"] ??
+  f["Fecha de cierre efectiva"] ??   // alias que ya usabas
+  f["Fecha de Cierre Efectiva"] ??
+  f["Fecha de cierre"] ??            // último fallback
+  f["Fecha de Cierre"] ?? "";
+
+const cierreReal =
+  (cierreRealRaw && typeof cierreRealRaw === "object")
+    ? (cierreRealRaw.start || cierreRealRaw.date || "")
+    : cierreRealRaw;
 
       // --- Responsables (varios alias)
       const responsablePrincipal =
