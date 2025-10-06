@@ -96,20 +96,22 @@ body {
 
     .chip-row{ display:flex; align-items:center; gap:10px }
     .badge{
-      background:rgba(255,255,255,.22);
-      border:1px solid rgba(255,255,255,.35);
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:700;
-      font-size:12px;
-      color:#fff;
-    .chip--iniciado {
-      background: #16a34a; /* verde */
-      color: #fff;
-      border: 1px solid #16a34a;
-    }
+  background:rgba(255,255,255,.22);
+  border:1px solid rgba(255,255,255,.35);
+  padding:6px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+  color:#fff;
+}
 
-    }
+/* ===== Chips por estado ===== */
+.chip--cerrado{ background:#16a34a; color:#fff; border:1px solid #16a34a }
+.chip--en-proceso{ background:#f59e0b; color:#111827; border:1px solid #f59e0b }
+.chip--no-iniciado{ background:#dc2626; color:#fff; border:1px solid #dc2626 }
+.chip--pendiente-representante-soft{ background:#FECACA; color:#7F1D1D; border:1px solid #FCA5A5 }
+/* 👇 NUEVA regla bien posicionada */
+.chip--iniciado{ background:#16a34a; color:#fff; border:1px solid #16a34a }
 
     .list{ display:grid; grid-template-columns:1fr 1fr; gap:10px 18px }
     .list .k{ color:var(--muted); font-size:13px }
@@ -189,17 +191,15 @@ body {
     }
 
     // Estado -> clase + etiqueta
-    const STATUS_MAP = [
-      { match: /cerrad/, cls: 'chip--cerrado', label: 'Cerrado' },
-      { match: /(no[\s-]?iniciado)/, cls: 'chip--no-iniciado', label: 'No iniciado' },
-      { match: /iniciado/, cls: 'chip--iniciado', label: 'Iniciado' },
-      { match: /(^|\s|^ya\s+|^estado:\s*)iniciad[oa](\b|[\s\-:])/,
-        cls: 'chip--iniciado', label: 'Iniciado' },
-      { match: /(en[\s-]?proceso)/, cls: 'chip--en-proceso', label: 'En proceso' },
-      { match: /(pendiente).*(info|informaci[oó]n).*(report|reporta|reportante|reportador|repres)/,
-        cls: 'chip--pendiente-representante-soft',
-        label: 'Pendiente info del reportante' },
-    ];
+   const STATUS_MAP = [
+  { match: /cerrad/, cls: 'chip--cerrado', label: 'Cerrado' },
+  { match: /(no[\s-]?iniciado)/, cls: 'chip--no-iniciado', label: 'No iniciado' },
+  { match: /iniciado/, cls: 'chip--iniciado', label: 'Iniciado' },
+  { match: /(en[\s-]?proceso)/, cls: 'chip--en-proceso', label: 'En proceso' },
+  { match: /(pendiente).*(info|informaci[oó]n).*(report|reporta|reportante|reportador|repres)/,
+    cls: 'chip--pendiente-representante-soft',
+    label: 'Pendiente info del reportante' },
+  ];
     function statusClass(estado){
       const s = normalize(estado);
       for (const r of STATUS_MAP){ if (r.match.test(s)) return r.cls; }
