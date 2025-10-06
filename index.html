@@ -268,7 +268,12 @@ body {
 
           <section class="card">
             <div class="hd">Descripción del reporte</div>
-            <div class="bd">${r.descripcion || "<em>—</em>"}</div>
+            <div class="bd">${
+              segmentParagraphs(r.descripcion)
+                .map(p => `<p style="margin-bottom:12px; line-height:1.6">${p}</p>`)
+                .join('') || "<em>—</em>"
+            }</div>
+
           </section>
         </div>
 
