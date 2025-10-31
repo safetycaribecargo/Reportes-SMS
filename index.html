@@ -1,476 +1,87 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Caribe Cargo · Portal Interno</title>
 
-  <style>
-    :root{
-      --blue-dark:#002D72;
-      --blue:#00439b;
-      --blue-light:#00AEEF;
 
-      /* modo claro */
-      --bg:#ffffff;
-      --card:#f5f7fa;
-      --text:#111827;
-      --muted:#374151;
-      --border:rgba(0,0,0,.10);
-      --shadow:0 10px 30px rgba(0,0,0,.15);
-      --radius:18px;
-      --logo-h:32px;
-    }
-    @media (prefers-color-scheme: dark){
-      :root{
-        --bg:#0b1220;
-        --card:#0f172a;
-        --text:#E5E7EB;
-        --muted:#94A3B8;
-        --border:rgba(255,255,255,.10);
-        --shadow:0 10px 30px rgba(0,0,0,.45);
-      }
-    }
+const acciones = Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
+: f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
+: Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
+: f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
+: [];
 
-    body{
-      margin:0;
-      color:var(--text);
-      font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-      background:
-        radial-gradient(1200px 600px at 120% -20%, rgba(0,174,239,.18), transparent 60%),
-        linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
-      min-height:100dvh;
-    }
 
-    /* Header azul y letras blancas */
-    header{
-      position:sticky; top:0; z-index:5;
-      background:var(--blue-dark);
-      color:#fff;
-      border-bottom:1px solid var(--blue);
-    }
-    .nav{ max-width:1100px; margin:0 auto; padding:16px 20px; display:flex; align-items:center; justify-content:space-between }
-    .brand{ display:flex; gap:12px; align-items:center; font-weight:800; letter-spacing:.06em; color:#fff }
-    .brand .logo{ height:var(--logo-h); width:auto; display:block; object-fit:contain }
-    .brand .word{ font-size:clamp(16px, 2.2vw, 22px); text-transform:uppercase }
-    .menu span{ color:#fff }
-    @media (max-width:480px){ :root{ --logo-h:24px } .brand .word{ font-size:18px } }
+let updates = [];
+const updRaw = f["Notas de actualización"] ?? f["Notas"];
+if (Array.isArray(updRaw)) { updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" }))); }
+else if (updRaw) { updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" })); }
 
-    .container{ max-width:1100px; margin:0 auto; padding:40px 20px 70px }
 
-    .search-card{
-      width:min(880px,100%); margin:24px auto; background:var(--card); border-radius:var(--radius);
-      box-shadow:var(--shadow); padding:26px; border:1px solid var(--border)
-    }
-    .search-row{ display:flex; gap:12px; flex-wrap:wrap }
-    .search-row input{
-      flex:1; padding:16px; border-radius:12px; border:1px solid var(--border); outline:none; font-size:16px;
-      background:transparent; color:var(--text);
-    }
-    .btn{
-      border:none; background:linear-gradient(135deg,var(--blue-dark),var(--blue)); color:#fff;
-      padding:14px 18px; border-radius:12px; font-weight:700; min-width:130px; cursor:pointer
-    }
+const cierreRaw = f["Fecha estimada de cierre (vigente)"] ?? f["Fecha estimada de cierre"] ?? f["Fecha Estimada de Cierre"] ?? "";
+const cierre = (cierreRaw && typeof cierreRaw === "object") ? (cierreRaw.start || cierreRaw.date || "") : cierreRaw;
 
-    .result{ display:none; margin:26px auto 0; width:min(100%,1100px) }
-    .result.active{ display:block }
 
-    .card{ background:var(--card); border-radius:16px; box-shadow:var(--shadow); border:1px solid var(--border) }
-    .card .hd{ padding:14px 18px; border-bottom:1px solid var(--border); color:#cde4ff; font-weight:800 }
-    .card .bd{ padding:18px }
+const cierreRealRaw = f["Fecha real de cierre"] ?? f["Fecha Real de Cierre"] ?? f["Fecha de cierre real"] ?? f["Fecha de cierre efectiva"] ?? f["Fecha de Cierre Efectiva"] ?? f["Fecha de cierre"] ?? f["Fecha de Cierre"] ?? "";
+const cierreEfectivo = (cierreRealRaw && typeof cierreRealRaw === "object") ? (cierreRealRaw.start || cierreRealRaw.date || "") : cierreRealRaw;
 
-    .grid{ display:grid; gap:16px; grid-template-columns:1.2fr 1fr; margin-top:16px }
-    @media (max-width:900px){ .grid{ grid-template-columns:1fr } }
 
-    .report-header{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      background:linear-gradient(135deg,var(--blue-dark),var(--blue)); color:#fff;
-      padding:18px 22px; border-radius:16px; box-shadow:var(--shadow)
-    }
-    .chip{ padding:8px 12px; border-radius:999px; font-weight:700; border:1px solid rgba(255,255,255,.35) }
+const responsablePrincipal = f["Responsable"] || f["Responsable principal"] || (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
+const responsableSeg = f["Responsable del seguimiento"] || f["Responsable seguimiento"] || (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
 
-    .chip-row{ display:flex; align-items:center; gap:10px }
-    .badge{
-      background:rgba(255,255,255,.22);
-      border:1px solid rgba(255,255,255,.35);
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:700;
-      font-size:12px;
-      color:#fff;
-    }
 
-    /* ===== Chips por estado ===== */
-    .chip--cerrado{ background:#16a34a; color:#fff; border:1px solid #16a34a }
-    .chip--en-proceso{ background:#f59e0b; color:#111827; border:1px solid #f59e0b }
-    .chip--no-iniciado{ background:#dc2626; color:#fff; border:1px solid #dc2626 }
-    .chip--pendiente-representante-soft{ background:#FECACA; color:#7F1D1D; border:1px solid #FCA5A5 }
-    .chip--iniciado{ background:#16a34a; color:#fff; border:1px solid #16a34a } /* verde */
+const descripcion = f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] || f["Descripción"] || f["Descripcion"] || "";
+const estacion = f["Estación"] || f["Estación/Área"] || "";
 
-    .list{ display:grid; grid-template-columns:1fr 1fr; gap:10px 18px }
-    .list .k{ color:var(--muted); font-size:13px }
-    .list .v{ font-weight:600 }
 
-    /* Plan de acción: viñeta azul */
-    .plan-accion{ list-style:disc; padding-left:20px }
-    .plan-accion li::marker{ color:var(--blue-light) }
+// ===== Attachments =====
+const pruebas = Array.isArray(f["Pruebas de cierre"]) ? f["Pruebas de cierre"].map(a => ({ url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "", filename: a.filename || "Prueba de cierre", type: a.type || '' })).filter(x => x.url) : [];
 
-    /* Notas: con viñetas azules igual que Plan de acción */
-    .timeline {
-      list-style: disc;
-      padding-left: 20px;
-      margin: 0;
-    }
 
-    .timeline li {
-      margin-bottom: 12px;
-      line-height: 1.6;
-    }
+const evidencias = Array.isArray(f["Evidencias"]) ? f["Evidencias"].map(a => ({ url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "", filename: a.filename || "Evidencia", type: a.type || '' })).filter(x => x.url) : [];
 
-    .timeline li::marker {
-      color: var(--blue-light);
-    }
 
-    /* Galería de pruebas de cierre */
-    .galeria{ display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px }
-    .galeria img{ width:100%; height:150px; object-fit:cover; border-radius:8px }
-
-    footer{ text-align:center; color:var(--muted); padding:28px }
-    .plan-accion li {
-      margin-bottom: 12px; 
-      line-height: 1.6;
-    }
-
-  </style>
-</head>
-
-<body>
-  <header>
-    <nav class="nav">
-      <div class="brand">
-        <img src="assets/logo.png" alt="Caribe Cargo" class="logo" />
-        <span class="word">CARIBE CARGO</span>
-      </div>
-      <div class="menu"><span>Portal Interno</span></div>
-    </nav>
-  </header>
-
-  <section class="hero">
-    <div class="container">
-      <div class="search-card">
-        <form id="searchForm" autocomplete="off">
-          <div class="search-row">
-            <input id="reportId" placeholder="Ej.: SDQ-260120251031" aria-label="ID del reporte" />
-            <button class="btn" id="btnBuscar" type="submit">Buscar</button>
-          </div>
-          <small style="color:var(--muted)">Formato: IATA-DDMMYYYYHHmm</small>
-        </form>
-      </div>
-
-      <div id="result" class="result" aria-live="polite"></div>
-    </div>
-  </section>
-
-  <footer>© Caribe Cargo · Uso interno</footer>
-
-  <script>
-  (() => {
-    // ===== Config & helpers =====
-    const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
-    const FN_URL   = '/.netlify/functions/airtable';
-    const $ = (s)=>document.querySelector(s);
-
-    const ui = { show(html){ const r = $('#result'); r.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`; r.classList.add('active'); } };
-
-    const formatDate = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-
-  // ✅ Ajuste: si la fecha es de tipo 'YYYY-MM-DD' (sin hora),
-  // se corrige manualmente para evitar el desfase por zona horaria
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-    const [y, m, day] = iso.split("-").map(Number);
-    const localDate = new Date(y, m - 1, day); // usa hora local
-    return localDate.toLocaleDateString("es-DO", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  }
-
-  // Para fechas con hora
-  return isNaN(d)
-    ? iso
-    : d.toLocaleDateString("es-DO", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      });
+return {
+id: f["ID del reporte"] || id,
+fecha: f["Fecha de Evento"] || f["Fecha"] || "",
+cierre,
+cierreEfectivo,
+estado: f["Estado del reporte"] || f["Estado"] || "—",
+responsablePrincipal,
+responsable: responsableSeg,
+estacion,
+descripcion,
+acciones,
+updates,
+pruebas,
+evidencias
 };
+}
 
-    // Normaliza texto
-    function normalize(x){
-      return (x||'').toString()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-        .toLowerCase().trim();
-    }
 
-    // Estado -> clase + etiqueta
-    const STATUS_MAP = [
-      { match: /cerrad/, cls: 'chip--cerrado', label: 'Cerrado' },
-      { match: /(no[\s-]?iniciado)/, cls: 'chip--no-iniciado', label: 'No iniciado' },
-      { match: /iniciado/, cls: 'chip--iniciado', label: 'Iniciado' },
-      { match: /(en[\s-]?proceso)/, cls: 'chip--en-proceso', label: 'En proceso' },
-      { match: /(pendiente).*(info|informaci[oó]n).*(report|reporta|reportante|reportador|repres)/,
-        cls: 'chip--pendiente-representante-soft',
-        label: 'Pendiente info del reportante' },
-    ];
-    function statusClass(estado){
-      const s = normalize(estado);
-      for (const r of STATUS_MAP){ if (r.match.test(s)) return r.cls; }
-      return '';
-    }
-    function statusLabel(estado){
-      const s = normalize(estado);
-      for (const r of STATUS_MAP){ if (r.match.test(s)) return r.label; }
-      return estado || '—';
-    }
+window.addEventListener('DOMContentLoaded', ()=>{
+const form = document.getElementById('searchForm');
+const input = document.getElementById('reportId');
+const btn = document.getElementById('btnBuscar');
 
-    // Divide texto en párrafos; soporta "1. ..." "2. ..." y saltos de línea
-    function segmentParagraphs(text){
-      if(!text) return [];
-      let t = String(text).replace(/\r\n/g,"\n").trim();
-      let parts = t.split(/\n{2,}/).map(s=>s.trim()).filter(Boolean);
-      if(parts.length > 1) return parts;
-      t = t.replace(/(^|\n)\s*(\d+)\.\s+/g, (m, pre, n) => `${pre}§§§${n}. `);
-      parts = t.split(/§§§(?=\d+\.\s*)/).map(s=>s.trim()).filter(Boolean);
-      if(parts.length > 1) return parts;
-      return t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
-    }
 
-    // ===== Render =====
-    function renderReport(r){
-      const el = $('#result');
-      if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
+form.addEventListener('submit', async (e)=>{
+e.preventDefault();
+const id = (input.value || '').trim().toUpperCase();
+if(!id){ ui.show('Por favor escribe el <strong>ID del reporte</strong>.'); return; }
+if(!ID_REGEX.test(id)){
+ui.show('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: <code>SDQ-260120251031</code>).');
+return;
+}
 
-      // plan de acción: limpiar viñetas manuales "•", "-", "*"
-      const acciones = (r.acciones||[])
-        .map(a => String(a).replace(/^[•\-\*]\s*/,'').trim())
-        .filter(Boolean)
-        .map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
 
-      const updates  = (r.updates||[])
-        .filter(u=>u && (u.texto||'').trim()!=='')
-        .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`)
-        .join('') || '<li><em>Sin actualizaciones</em></li>';
+const old = btn.textContent;
+btn.textContent = 'Buscando…'; btn.disabled = true;
+ui.show('Buscando reporte…');
 
-      const statusCls = statusClass(r.estado);
-      const statusTxt = statusLabel(r.estado);
 
-      // Badge: prioriza fecha real, luego estimada
-      const fechaCierre = r.cierreEfectivo || r.cierre;
-      const badgeCierre = /cerrad/i.test(r.estado || '')
-        ? `<span class="badge">Cerrado: ${formatDate(fechaCierre) || ""}</span>`
-        : "";
-
-      // --- bloque Pruebas de cierre (si está cerrado y hay fotos)
-      let pruebasHTML = '';
-      const esCerrado = /cerrad/i.test(r.estado || '');
-      if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
-        const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join('');
-        pruebasHTML = `
-          <div class="card" style="margin-top:16px">
-            <div class="hd">Pruebas de cierre</div>
-            <div class="bd"><div class="galeria">${imgs}</div></div>
-          </div>`;
-      }
-
-      el.innerHTML = `
-        <div class="report-header">
-          <div>Reporte <strong>${r.id||""}</strong></div>
-          <div class="chip-row">
-            <div class="chip ${statusCls}">${statusTxt}</div>
-            ${badgeCierre}
-          </div>
-        </div>
-
-        <div class="grid">
-          <section class="card">
-            <div class="hd">Datos del reporte</div>
-            <div class="bd">
-              <div class="list">
-                <div class="k">ID</div><div class="v">${r.id||""}</div>
-                <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
-                <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
-                <div class="k">Estación</div><div class="v">${r.estacion||""}</div>
-                <div class="k">Responsable</div><div class="v">${r.responsablePrincipal||""}</div>
-                <div class="k">Responsable de seguimiento</div><div class="v">${r.responsable||""}</div>
-              </div>
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="hd">Descripción del reporte</div>
-            <div class="bd">${
-              segmentParagraphs(r.descripcion)
-                .map(p => `<p style="margin-bottom:12px; line-height:1.6">${p}</p>`)
-                .join('') || "<em>—</em>"
-            }</div>
-          </section>
-        </div>
-
-        <div class="grid">
-          <section class="card">
-            <div class="hd">Plan de acción</div>
-            <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
-          </section>
-          <section class="card">
-            <div class="hd">Notas de actualización</div>
-            <div class="bd"><ul class="timeline">${updates}</ul></div>
-          </section>
-        </div>
-
-        ${pruebasHTML}
-      `;
-      el.classList.add('active');
-    }
-
-    // ===== Fetch a Netlify Function =====
-    async function fetchReport(id){
-      const url = `${FN_URL}?id=${encodeURIComponent(id)}`;
-      let resp, text;
-      try{
-        resp = await fetch(url, { headers: { 'Accept': 'application/json' }});
-        text = await resp.text();
-      }catch(err){
-        ui.show(`❌ No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
-        return null;
-      }
-      if(!resp.ok){
-        ui.show(`❌ Error ${resp.status} en la función.<br><small>${text}</small>`);
-        return null;
-      }
-
-      let data;
-      try{ data = JSON.parse(text); }
-      catch(err){ ui.show(`❌ Respuesta inválida del servidor (JSON).`); return null; }
-
-      const f = data.fields || {};
-
-      // --- Acciones (array o texto)
-      const acciones =
-        Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
-        : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
-        : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
-        : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
-        : [];
-
-      // --- Notas (array de strings o texto largo)
-      let updates = [];
-      const updRaw = f["Notas de actualización"] ?? f["Notas"];
-      if (Array.isArray(updRaw)) {
-        updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" })));
-      } else if (updRaw) {
-        updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
-      }
-
-      // --- Fechas
-      const cierreRaw =
-        f["Fecha estimada de cierre (vigente)"] ??
-        f["Fecha estimada de cierre"] ??
-        f["Fecha Estimada de Cierre"] ?? "";
-      const cierre =
-        (cierreRaw && typeof cierreRaw === "object")
-          ? (cierreRaw.start || cierreRaw.date || "")
-          : cierreRaw;
-
-      // Priorizar siempre la REAL (o efectiva) de cierre
-      const cierreRealRaw =
-        f["Fecha real de cierre"] ??
-        f["Fecha Real de Cierre"] ??
-        f["Fecha de cierre real"] ??
-        f["Fecha de cierre efectiva"] ??
-        f["Fecha de Cierre Efectiva"] ??
-        f["Fecha de cierre"] ??
-        f["Fecha de Cierre"] ?? "";
-      const cierreEfectivo =
-        (cierreRealRaw && typeof cierreRealRaw === "object")
-          ? (cierreRealRaw.start || cierreRealRaw.date || "")
-          : cierreRealRaw;
-
-      // --- Responsables
-      const responsablePrincipal =
-        f["Responsable"] ||
-        f["Responsable principal"] ||
-        (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
-
-      const responsableSeg =
-        f["Responsable del seguimiento"] ||
-        f["Responsable seguimiento"] ||
-        (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
-
-      // --- Descripción
-      const descripcion =
-        f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
-        f["Descripción"] || f["Descripcion"] || "";
-
-      // --- Estación
-      const estacion = f["Estación"] || f["Estación/Área"] || "";
-
-      // --- Pruebas de cierre (attachments)
-      const pruebas = Array.isArray(f["Pruebas de cierre"])
-        ? f["Pruebas de cierre"].map(a => ({
-            url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
-            filename: a.filename || "Prueba de cierre"
-          })).filter(x => x.url)
-        : [];
-
-      return {
-        id: f["ID del reporte"] || id,
-        fecha: f["Fecha de Evento"] || f["Fecha"] || "",
-        cierre,                // estimada (visible en Datos del reporte)
-        cierreEfectivo,        // REAL/efectiva (visible en el badge)
-        estado: f["Estado del reporte"] || f["Estado"] || "—",
-        responsablePrincipal,
-        responsable: responsableSeg,
-        estacion,
-        descripcion,
-        acciones,
-        updates,
-        pruebas
-      };
-    }
-
-    // ===== Submit =====
-    window.addEventListener('DOMContentLoaded', ()=>{
-      const form = document.getElementById('searchForm');
-      const input = document.getElementById('reportId');
-      const btn = document.getElementById('btnBuscar');
-
-      form.addEventListener('submit', async (e)=>{
-        e.preventDefault();
-        const id = (input.value || '').trim().toUpperCase();
-        if(!id){ ui.show('Por favor escribe el <strong>ID del reporte</strong>.'); return; }
-        if(!ID_REGEX.test(id)){
-          ui.show('Formato de ID no válido. Usa <strong>IATA-DDMMYYYYHHmm</strong> (ej.: <code>SDQ-260120251031</code>).');
-          return;
-        }
-
-        const old = btn.textContent;
-        btn.textContent = 'Buscando…'; btn.disabled = true;
-        ui.show('Buscando reporte…');
-
-        try{
-          const data = await fetchReport(id);
-          if (data) renderReport(data);
-        }catch(err){
-          ui.show(`❌ Error inesperado.<br><small>${err.message}</small>`);
-        }finally{
-          btn.textContent = old; btn.disabled = false;
-        }
-      });
-    });
-  })();
-  </script>
+try{ const data = await fetchReport(id); if (data) renderReport(data); }
+catch(err){ ui.show(`❌ Error inesperado.<br><small>${err.message}</small>`); }
+finally{ btn.textContent = old; btn.disabled = false; }
+});
+});
+})();
+</script>
 </body>
 </html>
