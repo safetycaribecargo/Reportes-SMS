@@ -196,6 +196,31 @@
 
 const $ = (s) => document.querySelector(s);
 
+  // Helper para mostrar mensajes
+  const ui = {
+    show(html){
+      const r = document.querySelector('#result');
+      r.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`;
+      r.classList.add('active');
+    }
+  };
+
+// Formateo de fechas (corrige ISO 'YYYY-MM-DD' sin hora)
+const formatDate = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+
+  // Si viene 'YYYY-MM-DD' (sin hora), evitar desfase de zona horaria
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+    const [y, m, day] = iso.split("-").map(Number);
+    const localDate = new Date(y, m - 1, day); // usa hora local
+    return localDate.toLocaleDateString("es-DO", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
   // Para fechas con hora
   return isNaN(d)
     ? iso
