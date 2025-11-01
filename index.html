@@ -441,13 +441,37 @@
       })).filter(x => x.url)
     : [];
 
-  // --- Evidencias (attachments)  ✅ única definición
-  const evidencias = Array.isArray(f["Evidencias"])
-    ? f["Evidencias"].map(a => ({
-        url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
-        filename: a.filename || "Evidencia"
-      })).filter(x => x.url)
-    : [];
+  // --- Evidencias (attachments o lookups; tolerante a nombres/formatos)
+let evidencias = [];
+// Busca cualquier campo que contenga "evidenc" (Evidencias, Evidencias (lookup), etc.)
+const evidKey = Object.keys(f).find(k => /evidenc/i.test(k)) || "Evidencias";
+const evidRaw = f[evidKey];
+
+if (Array.isArray(evidRaw)) {
+  evidencias = evidRaw.map(a => {
+    if (typeof a === "string") {
+      // caso lookup/rollup que devuelve URLs como strings
+      return { url: a.trim(), filename: "Evidencia" };
+    }
+    // caso Attachment de Airtable
+    const url =
+      a?.url ||
+      a?.thumbnails?.large?.url ||
+      a?.thumbnails?.full?.url ||
+      "";
+    const filename = a?.filename || a?.name || "Evidencia";
+    return url ? { url, filename } : null;
+  }).filter(Boolean);
+} else if (typeof evidRaw === "string") {
+  // caso texto con una o varias URLs separadas por comas o saltos de línea
+  evidencias = evidRaw
+    .split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(u => ({ url: u, filename: "Evidencia" }));
+} else {
+  evidencias = [];
+}
 
   return {
     id: f["ID del reporte"] || id,
