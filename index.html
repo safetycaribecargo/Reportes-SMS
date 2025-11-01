@@ -358,25 +358,28 @@ const formatDate = (iso) => {
     ? `<span class="badge">Cerrado: ${formatDate(fechaCierre) || ""}</span>`
     : "";
 
-  // --- Evidencias (attachments o lookups; detecta tipo)
-let evidencias = [];
-const evidKey = Object.keys(f).find(k => /evidenc/i.test(k)) || "Evidencias";
-const evidRaw = f[evidKey];
-
-const guessType = (u, t) => t || (/\.(mp4|webm|ogg)$/i.test(u) ? 'video/mp4' : 'image/*');
-
-if (Array.isArray(evidRaw)) {
-  evidencias = evidRaw.map(a => {
-    if (typeof a === "string") return { url: a.trim(), filename: "Evidencia", type: guessType(a) };
-    const url = a?.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "";
-    const filename = a?.filename || a?.name || "Evidencia";
-    const type = guessType(url, a?.type);
-    return url ? { url, filename, type } : null;
-  }).filter(Boolean);
-} else if (typeof evidRaw === "string") {
-  evidencias = evidRaw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
-    .map(u => ({ url: u, filename: "Evidencia", type: guessType(u) }));
-} else { evidencias = []; }
+  // --- Evidencias (ya vienen procesadas desde fetchReport)
+  let evidenciasHTML = `
+    <div class="card" style="margin-top:16px">
+      <div class="hd">Evidencias</div>
+      <div class="bd">${
+        (Array.isArray(r.evidencias) && r.evidencias.length)
+          ? `<div class="galeria">
+              ${r.evidencias.map(p=>{
+                const isVideo = /^video/i.test(p.type || '') || /\.(mp4|webm|ogg)$/i.test(p.url);
+                return isVideo
+                  ? `<button class="media-thumb" data-type="video" data-url="${p.url}" aria-label="${p.filename}">
+                       <video src="${p.url}#t=0.1" muted playsinline></video>
+                       <span class="play-badge">▶</span>
+                     </button>`
+                  : `<button class="media-thumb" data-type="image" data-url="${p.url}" aria-label="${p.filename}">
+                       <img src="${p.url}" alt="${p.filename}">
+                     </button>`;
+              }).join('')}
+             </div>`
+          : `<em>No se adjuntaron evidencias en este reporte.</em>`
+      }</div>
+    </div>`;
 
   // --- Pruebas de cierre (solo si está cerrado)
   let pruebasHTML = '';
