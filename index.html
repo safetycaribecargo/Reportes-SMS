@@ -358,121 +358,113 @@
       try{
         resp = await fetch(url, { headers: { 'Accept': 'application/json' }});
         text = await resp.text();
-      }catch(err){
-        ui.show(`❌ No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
-        return null;
-      }
-      if(!resp.ok){
-        ui.show(`❌ Error ${resp.status} en la función.<br><small>${text}</small>`);
-        return null;
-      }
-
-      let data;
-      try{ data = JSON.parse(text); }
-      catch(err){ ui.show(`❌ Respuesta inválida del servidor (JSON).`); return null; }
-
-      const f = data.fields || {};
-
-      // --- Evidencias (attachments)
-const evidencias = Array.isArray(f["Evidencias"])
-  ? f["Evidencias"].map(a => ({
-      url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
-      filename: a.filename || "Evidencia"
-    })).filter(x => x.url)
-  : [];
-
-      // --- Acciones (array o texto)
-      const acciones =
-        Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
-        : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
-        : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
-        : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
-        : [];
-
-      // --- Notas (array de strings o texto largo)
-      let updates = [];
-      const updRaw = f["Notas de actualización"] ?? f["Notas"];
-      if (Array.isArray(updRaw)) {
-        updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" })));
-      } else if (updRaw) {
-        updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
-      }
-
-      // --- Fechas
-      const cierreRaw =
-        f["Fecha estimada de cierre (vigente)"] ??
-        f["Fecha estimada de cierre"] ??
-        f["Fecha Estimada de Cierre"] ?? "";
-      const cierre =
-        (cierreRaw && typeof cierreRaw === "object")
-          ? (cierreRaw.start || cierreRaw.date || "")
-          : cierreRaw;
-
-      // Priorizar siempre la REAL (o efectiva) de cierre
-      const cierreRealRaw =
-        f["Fecha real de cierre"] ??
-        f["Fecha Real de Cierre"] ??
-        f["Fecha de cierre real"] ??
-        f["Fecha de cierre efectiva"] ??
-        f["Fecha de Cierre Efectiva"] ??
-        f["Fecha de cierre"] ??
-        f["Fecha de Cierre"] ?? "";
-      const cierreEfectivo =
-        (cierreRealRaw && typeof cierreRealRaw === "object")
-          ? (cierreRealRaw.start || cierreRealRaw.date || "")
-          : cierreRealRaw;
-
-      // --- Responsables
-      const responsablePrincipal =
-        f["Responsable"] ||
-        f["Responsable principal"] ||
-        (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
-
-      const responsableSeg =
-        f["Responsable del seguimiento"] ||
-        f["Responsable seguimiento"] ||
-        (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
-
-      // --- Descripción
-      const descripcion =
-        f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
-        f["Descripción"] || f["Descripcion"] || "";
-
-      // --- Estación
-      const estacion = f["Estación"] || f["Estación/Área"] || "";
-
-      // --- Pruebas de cierre (attachments)
-      const pruebas = Array.isArray(f["Pruebas de cierre"])
-        ? f["Pruebas de cierre"].map(a => ({
-            url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
-            filename: a.filename || "Prueba de cierre"
-          })).filter(x => x.url)
-        : [];
-      
-      // --- Evidencias (attachments)
-      const evidencias = Array.isArray(f["Evidencias"])
-        ? f["Evidencias"].map(a => ({
-            url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
-            filename: a.filename || "Evidencia"
-        })).filter(x => x.url)
-      : [];
-
-      return {
-        id: f["ID del reporte"] || id,
-        fecha: f["Fecha de Evento"] || f["Fecha"] || "",
-        cierre,                // estimada (visible en Datos del reporte)
-        cierreEfectivo,        // REAL/efectiva (visible en el badge)
-        estado: f["Estado del reporte"] || f["Estado"] || "—",
-        responsablePrincipal,
-        responsable: responsableSeg,
-        estacion,
-        descripcion,
-        acciones,
-        updates,
-        evidencias,
-        pruebas
-      };
+    }catch(err){
+      ui.show(`❌ No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
+      return null;
     }
+    if(!resp.ok){
+      ui.show(`❌ Error ${resp.status} en la función.<br><small>${text}</small>`);
+      return null;
+    }
+
+    let data;
+    try{ data = JSON.parse(text); }
+    catch(err){ ui.show(`❌ Respuesta inválida del servidor (JSON).`); return null; }
+  
+    const f = data.fields || {};
+
+  // --- Acciones (array o texto)
+  const acciones =
+    Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
+    : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
+    : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
+    : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
+    : [];
+
+  // --- Notas (array de strings o texto largo)
+  let updates = [];
+  const updRaw = f["Notas de actualización"] ?? f["Notas"];
+  if (Array.isArray(updRaw)) {
+    updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" })));
+  } else if (updRaw) {
+    updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
+  }
+
+  // --- Fechas
+  const cierreRaw =
+    f["Fecha estimada de cierre (vigente)"] ??
+    f["Fecha estimada de cierre"] ??
+    f["Fecha Estimada de Cierre"] ?? "";
+  const cierre =
+    (cierreRaw && typeof cierreRaw === "object")
+      ? (cierreRaw.start || cierreRaw.date || "")
+      : cierreRaw;
+
+  // Priorizar siempre la REAL (o efectiva) de cierre
+  const cierreRealRaw =
+    f["Fecha real de cierre"] ??
+    f["Fecha Real de Cierre"] ??
+    f["Fecha de cierre real"] ??
+    f["Fecha de cierre efectiva"] ??
+    f["Fecha de Cierre Efectiva"] ??
+    f["Fecha de cierre"] ??
+    f["Fecha de Cierre"] ?? "";
+  const cierreEfectivo =
+    (cierreRealRaw && typeof cierreRealRaw === "object")
+      ? (cierreRealRaw.start || cierreRealRaw.date || "")
+      : cierreRealRaw;
+
+  // --- Responsables
+  const responsablePrincipal =
+    f["Responsable"] ||
+    f["Responsable principal"] ||
+    (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
+
+  const responsableSeg =
+    f["Responsable del seguimiento"] ||
+    f["Responsable seguimiento"] ||
+    (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
+
+  // --- Descripción
+  const descripcion =
+    f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
+    f["Descripción"] || f["Descripcion"] || "";
+
+  // --- Estación
+  const estacion = f["Estación"] || f["Estación/Área"] || "";
+
+  // --- Pruebas de cierre (attachments)
+  const pruebas = Array.isArray(f["Pruebas de cierre"])
+    ? f["Pruebas de cierre"].map(a => ({
+        url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
+        filename: a.filename || "Prueba de cierre"
+      })).filter(x => x.url)
+    : [];
+
+  // --- Evidencias (attachments)  ✅ única definición
+  const evidencias = Array.isArray(f["Evidencias"])
+    ? f["Evidencias"].map(a => ({
+        url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
+        filename: a.filename || "Evidencia"
+      })).filter(x => x.url)
+    : [];
+
+  return {
+    id: f["ID del reporte"] || id,
+    fecha: f["Fecha de Evento"] || f["Fecha"] || "",
+    cierre,                // estimada (visible en Datos del reporte)
+    cierreEfectivo,        // REAL/efectiva (visible en el badge)
+    estado: f["Estado del reporte"] || f["Estado"] || "—",
+    responsablePrincipal,
+    responsable: responsableSeg,
+    estacion,
+    descripcion,
+    acciones,
+    updates,
+    evidencias,
+    pruebas
+  };
+}
 
     // ===== Submit =====
     window.addEventListener('DOMContentLoaded', ()=>{
