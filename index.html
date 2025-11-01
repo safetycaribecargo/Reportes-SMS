@@ -183,13 +183,18 @@
 
   <script>
   (() => {
+    
     // ===== Config & helpers =====
-    // Usa Netlify en Netlify y /api en Vercel
-    const FN_URL = (() => {
-      const h = location.hostname;
-      if (h.endsWith('.vercel.app')) return '/api/airtable';     // Para Vercel
-      return '/.netlify/functions/airtable';                     // Para Netlify
-    })();
+    const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
+
+  // Usa Netlify en Netlify y /api en Vercel
+  const FN_URL = (() => {
+    const h = location.hostname;
+    if (h.endsWith('.vercel.app')) return '/api/airtable';   // Vercel
+    return '/.netlify/functions/airtable';                   // Netlify
+  })();
+
+const $ = (s) => document.querySelector(s);
 
   // Para fechas con hora
   return isNaN(d)
