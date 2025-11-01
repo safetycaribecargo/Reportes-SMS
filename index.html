@@ -250,90 +250,106 @@
 
     // ===== Render =====
     function renderReport(r){
-      const el = $('#result');
-      if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
+  const el = $('#result');
+  if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
 
-      // plan de acción: limpiar viñetas manuales "•", "-", "*"
-      const acciones = (r.acciones||[])
-        .map(a => String(a).replace(/^[•\-\*]\s*/,'').trim())
-        .filter(Boolean)
-        .map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
+  // plan de acción
+  const acciones = (r.acciones||[])
+    .map(a => String(a).replace(/^[•\-\*]\s*/,'').trim())
+    .filter(Boolean)
+    .map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
 
-      const updates  = (r.updates||[])
-        .filter(u=>u && (u.texto||'').trim()!=='')
-        .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`)
-        .join('') || '<li><em>Sin actualizaciones</em></li>';
+  const updates  = (r.updates||[])
+    .filter(u=>u && (u.texto||'').trim()!=='')
+    .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`)
+    .join('') || '<li><em>Sin actualizaciones</em></li>';
 
-      const statusCls = statusClass(r.estado);
-      const statusTxt = statusLabel(r.estado);
+  const statusCls = statusClass(r.estado);
+  const statusTxt = statusLabel(r.estado);
+  const fechaCierre = r.cierreEfectivo || r.cierre;
+  const badgeCierre = /cerrad/i.test(r.estado || '')
+    ? `<span class="badge">Cerrado: ${formatDate(fechaCierre) || ""}</span>`
+    : "";
 
-      // Badge: prioriza fecha real, luego estimada
-      const fechaCierre = r.cierreEfectivo || r.cierre;
-      const badgeCierre = /cerrad/i.test(r.estado || '')
-        ? `<span class="badge">Cerrado: ${formatDate(fechaCierre) || ""}</span>`
-        : "";
+  // --- Evidencias (fotos subidas por el reportante)
+  let evidenciasHTML = '';
+  if (Array.isArray(r.evidencias) && r.evidencias.length) {
+    const imgs = r.evidencias.map(p=>`<img src="${p.url}" alt="${p.filename||'Evidencia'}">`).join('');
+    evidenciasHTML = `
+      <div class="card" style="margin-top:16px">
+        <div class="hd">Evidencias</div>
+        <div class="bd"><div class="galeria">${imgs}</div></div>
+      </div>`;
+  } else {
+    evidenciasHTML = `
+      <div class="card" style="margin-top:16px">
+        <div class="hd">Evidencias</div>
+        <div class="bd"><em>No se adjuntaron evidencias en este reporte.</em></div>
+      </div>`;
+  }
 
-      // --- bloque Pruebas de cierre (si está cerrado y hay fotos)
-      let pruebasHTML = '';
-      const esCerrado = /cerrad/i.test(r.estado || '');
-      if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
-        const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join('');
-        pruebasHTML = `
-          <div class="card" style="margin-top:16px">
-            <div class="hd">Pruebas de cierre</div>
-            <div class="bd"><div class="galeria">${imgs}</div></div>
-          </div>`;
-      }
+  // --- Pruebas de cierre (solo si está cerrado)
+  let pruebasHTML = '';
+  const esCerrado = /cerrad/i.test(r.estado || '');
+  if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
+    const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join('');
+    pruebasHTML = `
+      <div class="card" style="margin-top:16px">
+        <div class="hd">Pruebas de cierre</div>
+        <div class="bd"><div class="galeria">${imgs}</div></div>
+      </div>`;
+  }
 
-      el.innerHTML = `
-        <div class="report-header">
-          <div>Reporte <strong>${r.id||""}</strong></div>
-          <div class="chip-row">
-            <div class="chip ${statusCls}">${statusTxt}</div>
-            ${badgeCierre}
+  el.innerHTML = `
+    <div class="report-header">
+      <div>Reporte <strong>${r.id||""}</strong></div>
+      <div class="chip-row">
+        <div class="chip ${statusCls}">${statusTxt}</div>
+        ${badgeCierre}
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <div class="hd">Datos del reporte</div>
+        <div class="bd">
+          <div class="list">
+            <div class="k">ID</div><div class="v">${r.id||""}</div>
+            <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
+            <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
+            <div class="k">Estación</div><div class="v">${r.estacion||""}</div>
+            <div class="k">Responsable</div><div class="v">${r.responsablePrincipal||""}</div>
+            <div class="k">Responsable de seguimiento</div><div class="v">${r.responsable||""}</div>
           </div>
         </div>
+      </section>
 
-        <div class="grid">
-          <section class="card">
-            <div class="hd">Datos del reporte</div>
-            <div class="bd">
-              <div class="list">
-                <div class="k">ID</div><div class="v">${r.id||""}</div>
-                <div class="k">Fecha</div><div class="v">${formatDate(r.fecha)||""}</div>
-                <div class="k">Fecha estimada de cierre</div><div class="v">${formatDate(r.cierre)||""}</div>
-                <div class="k">Estación</div><div class="v">${r.estacion||""}</div>
-                <div class="k">Responsable</div><div class="v">${r.responsablePrincipal||""}</div>
-                <div class="k">Responsable de seguimiento</div><div class="v">${r.responsable||""}</div>
-              </div>
-            </div>
-          </section>
+      <section class="card">
+        <div class="hd">Descripción del reporte</div>
+        <div class="bd">${
+          segmentParagraphs(r.descripcion)
+            .map(p => `<p style="margin-bottom:12px; line-height:1.6">${p}</p>`)
+            .join('') || "<em>—</em>"
+        }</div>
+      </section>
+    </div>
 
-          <section class="card">
-            <div class="hd">Descripción del reporte</div>
-            <div class="bd">${
-              segmentParagraphs(r.descripcion)
-                .map(p => `<p style="margin-bottom:12px; line-height:1.6">${p}</p>`)
-                .join('') || "<em>—</em>"
-            }</div>
-          </section>
-        </div>
+    <div class="grid">
+      <section class="card">
+        <div class="hd">Plan de acción</div>
+        <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
+      </section>
+      <section class="card">
+        <div class="hd">Notas de actualización</div>
+        <div class="bd"><ul class="timeline">${updates}</ul></div>
+      </section>
+    </div>
 
-        <div class="grid">
-          <section class="card">
-            <div class="hd">Plan de acción</div>
-            <div class="bd"><ul class="plan-accion">${acciones}</ul></div>
-          </section>
-          <section class="card">
-            <div class="hd">Notas de actualización</div>
-            <div class="bd"><ul class="timeline">${updates}</ul></div>
-          </section>
-        </div>
-
-        ${pruebasHTML}
-      `;
-      el.classList.add('active');
-    }
+    ${evidenciasHTML}
+    ${pruebasHTML}
+  `;
+  el.classList.add('active');
+}
 
     // ===== Fetch a Netlify Function =====
     async function fetchReport(id){
