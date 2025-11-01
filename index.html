@@ -443,6 +443,12 @@ const formatDate = (iso) => {
   `;
   el.classList.add('active');
 }
+    // habilitar clicks en miniaturas (Evidencias/Pruebas)
+    document.querySelectorAll('.galeria .media-thumb').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        openLightbox({ url: btn.dataset.url, type: btn.dataset.type });
+      });
+    });
 
     // ===== Fetch a Netlify Function =====
     async function fetchReport(id){
