@@ -373,6 +373,14 @@
 
       const f = data.fields || {};
 
+      // --- Evidencias (attachments)
+const evidencias = Array.isArray(f["Evidencias"])
+  ? f["Evidencias"].map(a => ({
+      url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
+      filename: a.filename || "Evidencia"
+    })).filter(x => x.url)
+  : [];
+
       // --- Acciones (array o texto)
       const acciones =
         Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
