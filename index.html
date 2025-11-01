@@ -184,27 +184,12 @@
   <script>
   (() => {
     // ===== Config & helpers =====
-    const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
-    const FN_URL   = '/.netlify/functions/airtable';
-    const $ = (s)=>document.querySelector(s);
-
-    const ui = { show(html){ const r = $('#result'); r.innerHTML = `<div class="search-card" style="text-align:center">${html}</div>`; r.classList.add('active'); } };
-
-    const formatDate = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-
-  // ✅ Ajuste: si la fecha es de tipo 'YYYY-MM-DD' (sin hora),
-  // se corrige manualmente para evitar el desfase por zona horaria
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-    const [y, m, day] = iso.split("-").map(Number);
-    const localDate = new Date(y, m - 1, day); // usa hora local
-    return localDate.toLocaleDateString("es-DO", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  }
+    // Usa Netlify en Netlify y /api en Vercel
+    const FN_URL = (() => {
+      const h = location.hostname;
+      if (h.endsWith('.vercel.app')) return '/api/airtable';     // Para Vercel
+      return '/.netlify/functions/airtable';                     // Para Netlify
+    })();
 
   // Para fechas con hora
   return isNaN(d)
