@@ -215,6 +215,41 @@
     // ===== Config & helpers =====
     const ID_REGEX = /^[A-Z]{3}-\d{12}$/;
 
+    // ==== Lightbox helpers ====
+function ensureLightbox(){
+  let lb = document.querySelector('#lightbox');
+  if (lb) return lb;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="lightbox" class="lb hidden" role="dialog" aria-modal="true">
+      <button class="lb-close" aria-label="Cerrar (Esc)">✕</button>
+      <div class="lb-inner"></div>
+    </div>
+  `);
+  lb = document.querySelector('#lightbox');
+  lb.addEventListener('click', (e)=>{ if(e.target.id==='lightbox') closeLightbox(); });
+  lb.querySelector('.lb-close').addEventListener('click', closeLightbox);
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeLightbox(); });
+  return lb;
+}
+function openLightbox({url, type}){
+  const lb = ensureLightbox();
+  const box = lb.querySelector('.lb-inner');
+  const isVideo = /^video/i.test(type || '') || /\.(mp4|webm|ogg)$/i.test(url);
+  box.innerHTML = isVideo
+    ? `<video src="${url}" controls autoplay playsinline></video>`
+    : `<img src="${url}" alt="media">`;
+  lb.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox(){
+  const lb = document.querySelector('#lightbox');
+  if(!lb) return;
+  lb.classList.add('hidden');
+  const box = lb.querySelector('.lb-inner');
+  if (box) box.innerHTML = '';
+  document.body.style.overflow = '';
+}
+
   // Usa Netlify en Netlify y /api en Vercel
   const FN_URL = (() => {
     const h = location.hostname;
