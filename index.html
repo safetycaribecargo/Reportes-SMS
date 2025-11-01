@@ -148,7 +148,35 @@
       margin-bottom: 12px; 
       line-height: 1.6;
     }
-
+    /* --- Thumbs (miniaturas) --- */
+    .media-thumb{
+      position: relative;
+      display: inline-block;
+      width: 168px; height: 128px;
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid #e5e7eb; background:#f8fafc;
+      padding:0; margin:0 12px 12px 0; cursor: zoom-in;
+    }
+    .media-thumb img, .media-thumb video{
+      width: 100%; height: 100%; object-fit: cover; display:block;
+    }
+    .media-thumb .play-badge{
+      position:absolute; right:8px; bottom:8px;
+      background:rgba(17,24,39,.85); color:#fff; font-size:12px;
+      padding:4px 6px; border-radius:8px;
+    }
+    
+    /* --- Lightbox (visor) --- */
+    .lb{ position:fixed; inset:0; background:rgba(0,0,0,.7);
+         display:flex; align-items:center; justify-content:center;
+         z-index:9999; padding:24px; }
+    .lb.hidden{ display:none; }
+    .lb-inner{ max-width: min(1200px, 92vw); max-height: 90vh; }
+    .lb-inner img, .lb-inner video{ width:100%; height:auto; max-height:90vh; border-radius:14px; }
+    .lb-close{
+      position:absolute; top:16px; right:16px; background:#111827; color:#fff;
+      border:none; padding:8px 10px; border-radius:10px; cursor:pointer; font-size:14px;
+    }
   </style>
 </head>
 
