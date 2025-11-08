@@ -399,17 +399,35 @@ const formatDate = (iso) => {
       }</div>
     </div>`;
 
-  // --- Pruebas de cierre (solo si está cerrado)
-  let pruebasHTML = '';
-  const esCerrado = /cerrad/i.test(r.estado || '');
-  if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
-    const imgs = r.pruebas.map(p=>`<img src="${p.url}" alt="${p.filename||'Prueba'}">`).join('');
-    pruebasHTML = `
-      <div class="card" style="margin-top:16px">
-        <div class="hd">Pruebas de cierre</div>
-        <div class="bd"><div class="galeria">${imgs}</div></div>
-      </div>`;
-  }
+// --- Pruebas de cierre (solo si está cerrado)
+let pruebasHTML = '';
+const esCerrado = /cerrad/i.test(r.estado || '');
+if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
+  const items = r.pruebas.map(p => {
+    const isPDF = /\.pdf$/i.test(p.filename || p.url);
+    if (isPDF) {
+      return `
+        <div class="pdf-item">
+          <iframe src="${p.url}" title="${p.filename || 'Archivo PDF'}"
+            style="width:100%; height:150px; border:0; border-radius:8px;">
+          </iframe>
+          <div class="pdf-nombre" style="text-align:center; margin-top:4px; font-size:13px;">
+            <a href="${p.url}" target="_blank" style="color:#66aaff; text-decoration:none;">
+              ${p.filename || 'Ver PDF'}
+            </a>
+          </div>
+        </div>`;
+    } else {
+      return `<img src="${p.url}" alt="${p.filename || 'Prueba'}">`;
+    }
+  }).join('');
+
+  pruebasHTML = `
+    <div class="card" style="margin-top:16px">
+      <div class="hd">Pruebas de cierre</div>
+      <div class="bd"><div class="galeria">${items}</div></div>
+    </div>`;
+}
 
   el.innerHTML = `
     <div class="report-header">
