@@ -260,7 +260,7 @@ function ensureLightbox(){
     </div>
   `);
   lb = document.querySelector('#lightbox');
-  lb.addEventListener('click', (e)=>{ if(e.target.id==='lightbox') closeLightbox(); });
+  lb.addEventListener('click', (e)=>{ if(e.target.id!=='lightbox') closeLightbox(); }); // Corregido: si el clic es fuera del 'lb-inner'
   lb.querySelector('.lb-close').addEventListener('click', closeLightbox);
   window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeLightbox(); });
   return lb;
@@ -368,6 +368,18 @@ const formatDate = (iso) => {
       if(parts.length > 1) return parts;
       return t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
     }
+
+    // --- HELPER CRÍTICO: Extrae el nombre de un campo Linked Record ---
+    function extractName(field) {
+        if (Array.isArray(field) && field.length > 0) {
+            // Un Linked Record de AirTable devuelve una array de objetos.
+            // Extraemos la propiedad 'name' del primer objeto.
+            return field[0]?.name || field[0]?.id || String(field[0]) || '';
+        }
+        // Si no es un array, devuelve el valor tal cual (ej. si es un lookup de texto simple)
+        return String(field || '');
+    }
+
 
     // ===== Render =====
     function renderReport(r){
@@ -494,15 +506,16 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
     ${pruebasHTML}
   `;
   el.classList.add('active');
-}
-    // habilitar clicks en miniaturas (Evidencias/Pruebas)
-    document.querySelectorAll('.galeria .media-thumb').forEach(btn=>{
+
+  // habilitar clicks en miniaturas (Evidencias/Pruebas)
+  el.querySelectorAll('.galeria .media-thumb').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         openLightbox({ url: btn.dataset.url, type: btn.dataset.type });
       });
     });
-
-    // ===== Fetch a Netlify Function =====
+}
+    
+    // ===== Fetch a Netlify Function (FUNCIÓN CON CORRECCIONES) =====
     async function fetchReport(id){
       const url = `${FN_URL}?id=${encodeURIComponent(id)}`;
       let resp, text;
@@ -541,38 +554,30 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
     updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
   }
 
-  // --- Fechas
+  // --- Fechas (Usando nombres de campos verificados)
   const cierreRaw =
-    f["Fecha estimada de cierre (vigente)"] ??
     f["Fecha estimada de cierre"] ??
-    f["Fecha Estimada de Cierre"] ?? "";
+    f["Fecha Estimada de Cierre"] ?? ""; // Nombre verificado
   const cierre =
-    (cierreRaw && typeof cierreRaw === "object")
-      ? (cierreRaw.start || cierreRaw.date || "")
+    (cierreRaw && typeof cierreRaw === "object" && cierreRaw.start)
+      ? cierreRaw.start
       : cierreRaw;
 
   // Priorizar siempre la REAL (o efectiva) de cierre
   const cierreRealRaw =
     f["Fecha real de cierre"] ??
-    f["Fecha Real de Cierre"] ??
-    f["Fecha de cierre real"] ??
-    f["Fecha de cierre efectiva"] ??
-    f["Fecha de Cierre Efectiva"] ??
-    f["Fecha de cierre"] ??
-    f["Fecha de Cierre"] ?? "";
+    f["Fecha Real de Cierre"] ?? "";
   const cierreEfectivo =
-    (cierreRealRaw && typeof cierreRealRaw === "object")
-      ? (cierreRealRaw.start || cierreRealRaw.date || "")
+    (cierreRealRaw && typeof cierreRealRaw === "object" && cierreRealRaw.start)
+      ? cierreRealRaw.start
       : cierreRealRaw;
 
-  // --- Responsables
-  // CÓDIGO CORREGIDO para manejar Linked Records (Campos de enlace)
+  // --- Responsables (CORRECCIÓN CRÍTICA: LECTURA DE LINKED RECORDS)
+  // **Usamos la función extractName para obtener el nombre del array de objetos del Linked Record.**
+  const responsablePrincipal = extractName(f["Responsable"]);
+  const responsableSeg = extractName(f["Responsable de seguimiento"]);
 
-  // Asume que los campos Linked Record contienen un array de objetos [ { id: '...', name: 'Nombre' } ]
-  const responsablePrincipal = f['Responsable'] && f['Responsable'].length > 0 ? f['Responsable'][0].name : '';
-  const responsableSeg = f['Responsable de seguimiento'] && f['Responsable de seguimiento'].length > 0 ? f['Responsable de seguimiento'][0].name : '';
 
-  // ...
   // --- Descripción
   const descripcion =
     f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
@@ -580,6 +585,10 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
 
   // --- Estación
   const estacion = f["Estación"] || f["Estación/Área"] || "";
+
+  // --- Evidencias y Pruebas
+  // Busca el campo de fecha correcto que usamos en el portal:
+  const fecha = f["Fecha de ingreso del reporte (Sistema)"] || f["Fecha de Evento"] || f["Fecha"] || "";
 
   // --- Pruebas de cierre (attachments)
   const pruebas = Array.isArray(f["Pruebas de cierre"])
@@ -591,17 +600,14 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
 
   // --- Evidencias (attachments o lookups; tolerante a nombres/formatos)
 let evidencias = [];
-// Busca cualquier campo que contenga "evidenc" (Evidencias, Evidencias (lookup), etc.)
 const evidKey = Object.keys(f).find(k => /evidenc/i.test(k)) || "Evidencias";
 const evidRaw = f[evidKey];
 
 if (Array.isArray(evidRaw)) {
   evidencias = evidRaw.map(a => {
     if (typeof a === "string") {
-      // caso lookup/rollup que devuelve URLs como strings
       return { url: a.trim(), filename: "Evidencia" };
     }
-    // caso Attachment de Airtable
     const url =
       a?.url ||
       a?.thumbnails?.large?.url ||
@@ -611,7 +617,6 @@ if (Array.isArray(evidRaw)) {
     return url ? { url, filename } : null;
   }).filter(Boolean);
 } else if (typeof evidRaw === "string") {
-  // caso texto con una o varias URLs separadas por comas o saltos de línea
   evidencias = evidRaw
     .split(/[\n,]+/)
     .map(s => s.trim())
@@ -623,7 +628,7 @@ if (Array.isArray(evidRaw)) {
 
   return {
     id: f["ID del reporte"] || id,
-    fecha: f["Fecha de Evento"] || f["Fecha"] || "",
+    fecha, // Usando el campo de fecha verificado
     cierre,                // estimada (visible en Datos del reporte)
     cierreEfectivo,        // REAL/efectiva (visible en el badge)
     estado: f["Estado del reporte"] || f["Estado"] || "—",
