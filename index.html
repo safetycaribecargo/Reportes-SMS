@@ -566,16 +566,13 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
       : cierreRealRaw;
 
   // --- Responsables
-  const responsablePrincipal =
-    f["Responsable"] ||
-    f["Responsable principal"] ||
-    (Array.isArray(f["Responsable (lookup)"]) ? f["Responsable (lookup)"][0] : f["Responsable (lookup)"]) || "";
+  // CÓDIGO CORREGIDO para manejar Linked Records (Campos de enlace)
 
-  const responsableSeg =
-    f["Responsable del seguimiento"] ||
-    f["Responsable seguimiento"] ||
-    (Array.isArray(f["Responsable de seguimiento (lookup)"]) ? f["Responsable de seguimiento (lookup)"][0] : f["Responsable de seguimiento (lookup)"]) || "";
+  // Asume que los campos Linked Record contienen un array de objetos [ { id: '...', name: 'Nombre' } ]
+  const responsablePrincipal = f['Responsable'] && f['Responsable'].length > 0 ? f['Responsable'][0].name : '';
+  const responsableSeg = f['Responsable de seguimiento'] && f['Responsable de seguimiento'].length > 0 ? f['Responsable de seguimiento'][0].name : '';
 
+  // ...
   // --- Descripción
   const descripcion =
     f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
