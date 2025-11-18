@@ -372,11 +372,10 @@ const formatDate = (iso) => {
     // --- HELPER CRÍTICO: Extrae el nombre de un campo Linked Record ---
     function extractName(field) {
         if (Array.isArray(field) && field.length > 0) {
-            // Un Linked Record de AirTable devuelve una array de objetos.
-            // Extraemos la propiedad 'name' del primer objeto.
+            // Intenta leer el nombre del primer elemento del array de Linked Record
             return field[0]?.name || field[0]?.id || String(field[0]) || '';
         }
-        // Si no es un array, devuelve el valor tal cual (ej. si es un lookup de texto simple)
+        // Si no es un array, devuelve el valor tal cual (ej. si era un simple nombre)
         return String(field || '');
     }
 
