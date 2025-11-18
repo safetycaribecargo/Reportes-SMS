@@ -571,20 +571,21 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
       ? cierreRealRaw.start
       : cierreRealRaw;
 
- // --- Responsables (CORRECCIÓN V.2: LECTURA DE LINKED RECORDS)
-  // La función extractName debe ser la clave, pero aquí aseguramos que maneje el campo Link.
-  const responsablePrincipalRaw = f["Responsable"];
-  const responsableSegRaw = f["Responsable de seguimiento"];
+ // --- Responsables (CORRECCIÓN FINAL: LECTURA DE CAMPOS LOOKUP/BUSQUEDA)
+  // Ahora leemos las columnas de Lookup que contienen el nombre como texto simple:
 
-  // Usamos extractName para obtener el nombre del primer registro enlazado
-  const responsablePrincipal = extractName(responsablePrincipalRaw);
-  const responsableSeg = extractName(responsableSegRaw);
+  const responsablePrincipal = f["Nombre completo from responsable"] || "";
+  const responsableSeg = f["Nombre completo from responsable de seguimiento"] || "";
+  
+  // Nota: Ya no necesitamos la función extractName, pero la mantendremos ahí por si acaso.
 
   // --- Descripción
   const descripcion =
     f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
     f["Descripción"] || f["Descripcion"] || "";
-
+  
+  // ... el resto del código de la función fetchReport sigue igual ...
+      
   // --- Estación
   const estacion = f["Estación"] || f["Estación/Área"] || "";
 
