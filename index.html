@@ -470,6 +470,53 @@ const formatDate = (iso) => {
         return [String(field || '')].filter(s => s.trim() !== '');
     }
 
+    // --- LÓGICA DEL ACORDEÓN: Función de inicialización ---
+    function initRCAAccordion() {
+        const toggleRCA = document.getElementById('rcaToggle');
+        const contentRCA = document.getElementById('rcaContent');
+        
+        if (toggleRCA && contentRCA) {
+            
+            // Función para ajustar la altura para la animación
+            function setContentHeight() {
+                const isExpanded = toggleRCA.getAttribute('aria-expanded') === 'true';
+                
+                if (isExpanded) {
+                    // El scrollHeight es la altura real del contenido. Añadimos un extra para el padding inferior
+                    // El padding total (top/bottom) es 36px (18+18)
+                    contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px"; 
+                    contentRCA.style.padding = "18px";
+                } else {
+                    contentRCA.style.maxHeight = "0";
+                    contentRCA.style.padding = "0 18px";
+                }
+            }
+            
+            // Evento de clic
+            toggleRCA.addEventListener('click', function() {
+                const isExpanded = this.getAttribute('aria-expanded') === 'true' || false;
+                this.setAttribute('aria-expanded', !isExpanded);
+                
+                if (!isExpanded) {
+                    // Re-calculamos scrollHeight justo antes de expandir
+                    contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px";
+                    contentRCA.style.padding = "18px";
+                } else {
+                    contentRCA.style.maxHeight = "0";
+                    contentRCA.style.padding = "0 18px";
+                }
+            });
+            
+            // Esto asegura que la transición funcione correctamente al redimensionar la ventana
+            window.addEventListener('resize', setContentHeight);
+            
+            // Aseguramos el estado inicial de colapso
+            contentRCA.style.transition = 'max-height 0.3s ease-out, padding 0.3s ease-out';
+            contentRCA.style.maxHeight = "0";
+            contentRCA.style.padding = "0 18px";
+        }
+    }
+
 
     // ===== Render =====
     function renderReport(r){
@@ -628,50 +675,53 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
           </div>
         </div>
       </section>
-      
-      <script>
-          const toggleRCA = document.getElementById('rcaToggle');
-          const contentRCA = document.getElementById('rcaContent');
-          
-          if (toggleRCA && contentRCA) {
-              
-              // Función para ajustar la altura para la animación
-              function setContentHeight() {
-                  const isExpanded = toggleRCA.getAttribute('aria-expanded') === 'true';
-                  
-                  if (isExpanded) {
-                      // El scrollHeight es la altura real del contenido. Añadimos un extra para el padding inferior
-                      contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px"; 
-                      contentRCA.style.padding = "18px";
-                  } else {
-                      contentRCA.style.maxHeight = "0";
-                      contentRCA.style.padding = "0 18px";
-                  }
-              }
-              
-              // Evento de clic
-              toggleRCA.addEventListener('click', function() {
-                  const isExpanded = this.getAttribute('aria-expanded') === 'true' || false;
-                  this.setAttribute('aria-expanded', !isExpanded);
-                  
-                  if (!isExpanded) {
-                      contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px";
-                      contentRCA.style.padding = "18px";
-                  } else {
-                      contentRCA.style.maxHeight = "0";
-                      contentRCA.style.padding = "0 18px";
-                  }
-              });
-              
-              // Esto asegura que la transición funcione correctamente al redimensionar la ventana
-              window.addEventListener('resize', setContentHeight);
-              
-              // Configuramos el contenido inicialmente colapsado
-              contentRCA.classList.remove('hidden'); // Aseguramos que la transición funcione
-          }
-      </script>
-    ` : ''}
+    `: ''}
     ${pruebasHTML}
+    
+    <script>
+        const toggleRCA = document.getElementById('rcaToggle');
+        const contentRCA = document.getElementById('rcaContent');
+        
+        if (toggleRCA && contentRCA) {
+            
+            // Función para ajustar la altura para la animación
+            function setContentHeight() {
+                const isExpanded = toggleRCA.getAttribute('aria-expanded') === 'true';
+                
+                if (isExpanded) {
+                    // El scrollHeight es la altura real del contenido. Añadimos un extra para el padding total (18px arriba + 18px abajo)
+                    contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px"; 
+                    contentRCA.style.padding = "18px";
+                } else {
+                    contentRCA.style.maxHeight = "0";
+                    contentRCA.style.padding = "0 18px";
+                }
+            }
+            
+            // Evento de clic
+            toggleRCA.addEventListener('click', function() {
+                const isExpanded = this.getAttribute('aria-expanded') === 'true' || false;
+                this.setAttribute('aria-expanded', !isExpanded);
+                
+                if (!isExpanded) {
+                    // Re-calculamos scrollHeight justo antes de expandir
+                    contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px";
+                    contentRCA.style.padding = "18px";
+                } else {
+                    contentRCA.style.maxHeight = "0";
+                    contentRCA.style.padding = "0 18px";
+                }
+            });
+            
+            // Esto asegura que la transición funcione correctamente al redimensionar la ventana
+            window.addEventListener('resize', setContentHeight);
+            
+            // Configuramos el contenido inicialmente colapsado
+            contentRCA.style.transition = 'max-height 0.3s ease-out, padding 0.3s ease-out';
+            contentRCA.style.maxHeight = "0";
+            contentRCA.style.padding = "0 18px";
+        }
+    </script>
   `;
   el.classList.add('active');
 
@@ -732,7 +782,7 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
   const acciones =
     Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
     : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
-    : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
+    : Arrayado(f["Acciones tomadas"]) ? f["Acciones tomadas"]
     : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
     : [];
 
