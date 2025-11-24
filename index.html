@@ -246,18 +246,16 @@
 
   .rca-content {
       overflow: hidden;
+      /* Inicialmente escondido */
+      max-height: 0; 
+      padding-top: 0;
+      padding-bottom: 0;
       transition: max-height 0.3s ease-out, padding 0.3s ease-out;
       border: 1px solid var(--border);
       border-top: none;
       border-bottom-left-radius: 16px;
       border-bottom-right-radius: 16px;
       background: var(--card);
-  }
-  
-  .rca-content.hidden {
-      max-height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
   }
   
   .rca-section-title {
@@ -451,12 +449,24 @@ const formatDate = (iso) => {
     }
     
     // --- HELPER CRÍTICO: Extrae el nombre de un campo Linked Record (Lookups) ---
+    function extractName(field) {
+        if (Array.isArray(field) && field.length > 0) {
+            // Intenta leer el nombre del primer elemento del array de Linked Record
+            // En Lookups que devuelven IDs o nombres, usamos el primer elemento
+            return field[0]?.name || field[0]?.id || String(field[0]) || '';
+        }
+        // Si no es un array, devuelve el valor tal cual
+        return String(field || '');
+    }
+
+    // --- NUEVO HELPER: Para campos Lookup de RCA que devuelven arrays de texto ---
     function extractTextArray(field) {
         if (Array.isArray(field)) {
             // Si es un array (típico de Lookups de texto largo)
+            // Filtramos vacíos y unimos en párrafos
             return field.filter(Boolean).map(String);
         }
-        // Si no es un array, devolvemos un array con el texto o vacío
+        // Si no es un array (texto simple, o undefined), devolvemos un array con el texto o vacío
         return [String(field || '')].filter(s => s.trim() !== '');
     }
 
@@ -585,13 +595,13 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
     ${evidenciasHTML}
     
     ${(r.rcaData && r.rcaData.id) ? `
-      <section class="rca-section" style="margin-top:16px;">
+      <section class="rca-section">
         <button class="rca-toggle card-hd" aria-expanded="false" id="rcaToggle">
           <span>Análisis de Causa Raíz (RCA) - ID: <strong>${r.rcaData.id}</strong></span>
           ${r.rcaData.awbNumber ? `<span style="font-size:12px;">(Guía Aérea: ${r.rcaData.awbNumber})</span>` : ''}
         </button>
-        <div class="rca-content hidden" id="rcaContent">
-          <div class="bd">
+        <div class="rca-content" id="rcaContent" style="padding: 0 18px;">
+          <div class="bd" style="padding-top: 0;">
             <h4 class="rca-section-title">Descripción del Problema a Investigar:</h4>
             ${r.rcaData.descripcionProblema.map(p => `<p style="margin-bottom:10px;">${p}</p>`).join('') || '<p style="font-style:italic;">— No hay descripción del problema en el RCA —</p>'}
 
@@ -624,10 +634,14 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
           const contentRCA = document.getElementById('rcaContent');
           
           if (toggleRCA && contentRCA) {
+              
               // Función para ajustar la altura para la animación
               function setContentHeight() {
-                  if (toggleRCA.getAttribute('aria-expanded') === 'true') {
-                      contentRCA.style.maxHeight = contentRCA.scrollHeight + "px";
+                  const isExpanded = toggleRCA.getAttribute('aria-expanded') === 'true';
+                  
+                  if (isExpanded) {
+                      // El scrollHeight es la altura real del contenido. Añadimos un extra para el padding inferior
+                      contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px"; 
                       contentRCA.style.padding = "18px";
                   } else {
                       contentRCA.style.maxHeight = "0";
@@ -635,18 +649,13 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
                   }
               }
               
-              // Inicializar la altura a 0 y añadir transición
-              contentRCA.style.transition = 'max-height 0.3s ease-out, padding 0.3s ease-out';
-              contentRCA.style.maxHeight = "0";
-              contentRCA.style.padding = "0 18px";
-              contentRCA.classList.remove('hidden'); // Remover hidden, dejar el control al max-height
-
+              // Evento de clic
               toggleRCA.addEventListener('click', function() {
                   const isExpanded = this.getAttribute('aria-expanded') === 'true' || false;
                   this.setAttribute('aria-expanded', !isExpanded);
                   
                   if (!isExpanded) {
-                      contentRCA.style.maxHeight = contentRCA.scrollHeight + "px";
+                      contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px";
                       contentRCA.style.padding = "18px";
                   } else {
                       contentRCA.style.maxHeight = "0";
@@ -656,6 +665,9 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
               
               // Esto asegura que la transición funcione correctamente al redimensionar la ventana
               window.addEventListener('resize', setContentHeight);
+              
+              // Configuramos el contenido inicialmente colapsado
+              contentRCA.classList.remove('hidden'); // Aseguramos que la transición funcione
           }
       </script>
     ` : ''}
@@ -734,7 +746,7 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
   }
 
   // --- Fechas (RESTAURACIÓN DE CAMPOS ORIGINALES QUE FUNCIONABAN)
-  // Utilizamos el nombre del campo que ha demostrado ser fiable en su entorno.
+  // Utilizamos los nombres más comunes y fiables de su base para evitar fallos.
   const fecha = f["Fecha de Reporte"] || f["Fecha"];
   
   const cierreRaw = f["Fecha estimada de cierre"] || f["Fecha Estimada de Cierre"] || "";
