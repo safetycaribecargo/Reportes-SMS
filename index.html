@@ -469,7 +469,7 @@ const formatDate = (iso) => {
         // Si no es un array (texto simple, o undefined), devolvemos un array con el texto o vacío
         return [String(field || '')].filter(s => s.trim() !== '');
     }
-
+    
     // --- LÓGICA DEL ACORDEÓN: Función de inicialización ---
     function initRCAAccordion() {
         const toggleRCA = document.getElementById('rcaToggle');
@@ -482,8 +482,7 @@ const formatDate = (iso) => {
                 const isExpanded = toggleRCA.getAttribute('aria-expanded') === 'true';
                 
                 if (isExpanded) {
-                    // El scrollHeight es la altura real del contenido. Añadimos un extra para el padding inferior
-                    // El padding total (top/bottom) es 36px (18+18)
+                    // El scrollHeight es la altura real del contenido. Añadimos un extra para el padding total (18px arriba + 18px abajo)
                     contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px"; 
                     contentRCA.style.padding = "18px";
                 } else {
@@ -510,7 +509,7 @@ const formatDate = (iso) => {
             // Esto asegura que la transición funcione correctamente al redimensionar la ventana
             window.addEventListener('resize', setContentHeight);
             
-            // Aseguramos el estado inicial de colapso
+            // Configuramos el contenido inicialmente colapsado
             contentRCA.style.transition = 'max-height 0.3s ease-out, padding 0.3s ease-out';
             contentRCA.style.maxHeight = "0";
             contentRCA.style.padding = "0 18px";
@@ -667,7 +666,7 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
               ${r.rcaData.factores.map(f => `<li>${f}</li>`).join('') || '<li>— No hay factores documentados —</li>'}
             </ul>
 
-            <h4 class="rca-section-title" style="margin-top:20px;">Soluciones Propuestas (Plan de Acción Correctiva):</h4>
+            <h4 classa="rca-section-title" style="margin-top:20px;">Soluciones Propuestas (Plan de Acción Correctiva):</h4>
             <ul class="plan-accion">
               ${r.rcaData.soluciones.map(s => `<li>${s}</li>`).join('') || '<li>— No hay soluciones propuestas —</li>'}
             </ul>
@@ -678,52 +677,11 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
     `: ''}
     ${pruebasHTML}
     
-    <script>
-        const toggleRCA = document.getElementById('rcaToggle');
-        const contentRCA = document.getElementById('rcaContent');
-        
-        if (toggleRCA && contentRCA) {
-            
-            // Función para ajustar la altura para la animación
-            function setContentHeight() {
-                const isExpanded = toggleRCA.getAttribute('aria-expanded') === 'true';
-                
-                if (isExpanded) {
-                    // El scrollHeight es la altura real del contenido. Añadimos un extra para el padding total (18px arriba + 18px abajo)
-                    contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px"; 
-                    contentRCA.style.padding = "18px";
-                } else {
-                    contentRCA.style.maxHeight = "0";
-                    contentRCA.style.padding = "0 18px";
-                }
-            }
-            
-            // Evento de clic
-            toggleRCA.addEventListener('click', function() {
-                const isExpanded = this.getAttribute('aria-expanded') === 'true' || false;
-                this.setAttribute('aria-expanded', !isExpanded);
-                
-                if (!isExpanded) {
-                    // Re-calculamos scrollHeight justo antes de expandir
-                    contentRCA.style.maxHeight = contentRCA.scrollHeight + 36 + "px";
-                    contentRCA.style.padding = "18px";
-                } else {
-                    contentRCA.style.maxHeight = "0";
-                    contentRCA.style.padding = "0 18px";
-                }
-            });
-            
-            // Esto asegura que la transición funcione correctamente al redimensionar la ventana
-            window.addEventListener('resize', setContentHeight);
-            
-            // Configuramos el contenido inicialmente colapsado
-            contentRCA.style.transition = 'max-height 0.3s ease-out, padding 0.3s ease-out';
-            contentRCA.style.maxHeight = "0";
-            contentRCA.style.padding = "0 18px";
-        }
-    </script>
   `;
   el.classList.add('active');
+  
+  // INICIALIZACIÓN DEL ACORDEÓN DESPUÉS DE RENDERIZAR EL HTML
+  initRCAAccordion(); 
 
   // habilitar clicks en miniaturas (Evidencias/Pruebas)
   el.querySelectorAll('.galeria .media-thumb').forEach(btn=>{
@@ -782,7 +740,7 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
   const acciones =
     Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
     : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
-    : Arrayado(f["Acciones tomadas"]) ? f["Acciones tomadas"]
+    : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
     : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
     : [];
 
