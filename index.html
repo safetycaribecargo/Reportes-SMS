@@ -260,7 +260,7 @@ function ensureLightbox(){
     </div>
   `);
   lb = document.querySelector('#lightbox');
-  lb.addEventListener('click', (e)=>{ if(e.target.id!=='lightbox') closeLightbox(); }); // Corregido: si el clic es fuera del 'lb-inner'
+  lb.addEventListener('click', (e)=>{ if(e.target.id==='lightbox') closeLightbox(); });
   lb.querySelector('.lb-close').addEventListener('click', closeLightbox);
   window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeLightbox(); });
   return lb;
@@ -368,17 +368,28 @@ const formatDate = (iso) => {
       if(parts.length > 1) return parts;
       return t.split(/\n+/).map(s=>s.trim()).filter(Boolean);
     }
-
+    
     // --- HELPER CRÍTICO: Extrae el nombre de un campo Linked Record ---
     function extractName(field) {
         if (Array.isArray(field) && field.length > 0) {
             // Intenta leer el nombre del primer elemento del array de Linked Record
+            // En Lookups que devuelven IDs o nombres, usamos el primer elemento
             return field[0]?.name || field[0]?.id || String(field[0]) || '';
         }
-        // Si no es un array, devuelve el valor tal cual (ej. si era un simple nombre)
+        // Si no es un array, devuelve el valor tal cual
         return String(field || '');
     }
 
+    // --- NUEVO HELPER: Para campos Lookup de RCA que devuelven arrays de texto ---
+    function extractTextArray(field) {
+        if (Array.isArray(field)) {
+            // Si es un array (típico de Lookups de texto largo)
+            // Filtramos vacíos y unimos en párrafos
+            return field.filter(Boolean).map(String);
+        }
+        // Si no es un array (texto simple, o undefined), devolvemos un array con el texto o vacío
+        return [String(field || '')].filter(s => s.trim() !== '');
+    }
 
     // ===== Render =====
     function renderReport(r){
@@ -500,7 +511,37 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
         <div class="bd"><ul class="timeline">${updates}</ul></div>
       </section>
     </div>
+    
+    ${(r.rcaData && r.rcaData.id) ? `
+      <section class="card" style="margin-top:16px;">
+        <div class="hd">Análisis de Causa Raíz (RCA) - ID: ${r.rcaData.id} ${r.rcaData.awbNumber ? `(Guía Aérea: ${r.rcaData.awbNumber})` : ''}</div>
+        <div class="bd">
+          <h4 style="color:var(--blue-dark); margin-top:0; margin-bottom:10px;">Descripción del Problema a Investigar:</h4>
+          ${r.rcaData.descripcionProblema.map(p => `<p>${p}</p>`).join('') || '<p style="font-style:italic;">— No hay descripción del problema en el RCA —</p>'}
 
+          <h4 style="color:var(--blue-dark); margin-top:20px; margin-bottom:10px;">Análisis '5 Porqués' (Causa Raíz):</h4>
+          <ol style="padding-left: 20px; margin-top: 0;">
+            <li>${r.rcaData.porque1.join(' / ') || '1er Por qué: —'}</li>
+            <li>${r.rcaData.porque2.join(' / ') || '2do Por qué: —'}</li>
+            <li>${r.rcaData.porque3.join(' / ') || '3er Por qué: —'}</li>
+            <li>${r.rcaData.porque4.join(' / ') || '4to Por qué: —'}</li>
+            <li>${r.rcaData.porque5.join(' / ') || '5to Por qué: —'}</li>
+          </ol>
+          <p style="font-weight:700; color:#dc2626;">Causa Raíz Final: ${r.rcaData.causaRaiz.join(' / ') || '—'}</p>
+          
+          <h4 style="color:var(--blue-dark); margin-top:20px; margin-bottom:10px;">Factores Contribuyentes:</h4>
+          <ul style="list-style:disc; padding-left: 20px;">
+            ${r.rcaData.factores.map(f => `<li>${f}</li>`).join('') || '<li>—</li>'}
+          </ul>
+
+          <h4 style="color:var(--blue-dark); margin-top:20px; margin-bottom:10px;">Soluciones Propuestas (Plan de Acción Correctiva):</h4>
+          <ul class="plan-accion">
+            ${r.rcaData.soluciones.map(s => `<li>${s}</li>`).join('') || '<li>—</li>'}
+          </ul>
+
+        </div>
+      </section>
+    `: ''}
     ${evidenciasHTML}
     ${pruebasHTML}
   `;
@@ -536,6 +577,25 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
   
     const f = data.fields || {};
 
+  // --- Helper para extraer RCA fields (asumiendo Lookups en la tabla principal) ---
+  const rcaData = {
+    // RCA ID es el campo primario de la tabla Causas Raíz. Lo obtenemos del Link o Lookup.
+    id: extractName(f["RCA - ID RCA"]) || extractName(f["RCA - ID"]) || extractName(f["Causa Raíz"]), 
+    awbNumber: extractTextArray(f["No. AWB"])[0] || extractTextArray(f["Número de Guía Aérea"])[0] || "", // AWB del Registro Safety
+    
+    // Campos del RCA (Asumimos Lookups que traen el texto de la tabla Causa Raíz)
+    descripcionProblema: extractTextArray(f["RCA - Descripción del Problema"]),
+    porque1: extractTextArray(f["RCA - 1-Por qué?"]),
+    porque2: extractTextArray(f["RCA - 2-Por qué?"]),
+    porque3: extractTextArray(f["RCA - 3-Por qué?"]),
+    porque4: extractTextArray(f["RCA - 4-Por qué?"]),
+    porque5: extractTextArray(f["RCA - 5-Por qué?"]),
+    factores: extractTextArray(f["RCA - Factores Contribuyentes"]),
+    causaRaiz: extractTextArray(f["RCA - Causa Raíz"]),
+    soluciones: f["RCA - Soluciones Propuestas"] ? segmentParagraphs(String(extractTextArray(f["RCA - Soluciones Propuestas"]).join('\n'))) : [], // Unir y segmentar
+  };
+
+
   // --- Acciones (array o texto)
   const acciones =
     Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
@@ -555,6 +615,7 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
 
   // --- Fechas (Usando nombres de campos verificados)
   const cierreRaw =
+    f["Fecha estimada de cierre (vigente)"] ??
     f["Fecha estimada de cierre"] ??
     f["Fecha Estimada de Cierre"] ?? ""; // Nombre verificado
   const cierre =
@@ -571,27 +632,18 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
       ? cierreRealRaw.start
       : cierreRealRaw;
 
- // --- Responsables (CORRECCIÓN FINAL: LECTURA DE CAMPOS LOOKUP/BUSQUEDA)
-  // Ahora leemos las columnas de Lookup que contienen el nombre como texto simple:
+  // --- Responsables (USANDO LOS LOOKUPS DE TEXTO PLANO)
+  const responsablePrincipal = extractName(f["Nombre completo from responsable"]);
+  const responsableSeg = extractName(f["Nombre completo from responsable de seguimiento"]);
 
-  const responsablePrincipal = f["Nombre Completo (from Responsable)"] || "";
-  const responsableSeg = f["Nombre Completo (from Responsable del seguimiento)"] || "";
-  
-  // Nota: Ya no necesitamos la función extractName, pero la mantendremos ahí por si acaso.
 
   // --- Descripción
   const descripcion =
     f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
     f["Descripción"] || f["Descripcion"] || "";
-  
-  // ... el resto del código de la función fetchReport sigue igual ...
-      
+
   // --- Estación
   const estacion = f["Estación"] || f["Estación/Área"] || "";
-
-  // --- Evidencias y Pruebas
-  // Busca el campo de fecha correcto que usamos en el portal:
-  const fecha = f["Fecha de ingreso del reporte (Sistema)"] || f["Fecha de Evento"] || f["Fecha"] || "";
 
   // --- Pruebas de cierre (attachments)
   const pruebas = Array.isArray(f["Pruebas de cierre"])
@@ -631,18 +683,19 @@ if (Array.isArray(evidRaw)) {
 
   return {
     id: f["ID del reporte"] || id,
-    fecha, // Usando el campo de fecha verificado
+    fecha: f["Fecha de Evento"] || f["Fecha"] || "",
     cierre,                // estimada (visible en Datos del reporte)
     cierreEfectivo,        // REAL/efectiva (visible en el badge)
     estado: f["Estado del reporte"] || f["Estado"] || "—",
-    responsablePrincipal,
-    responsable: responsableSeg,
+    responsablePrincipal: extractName(f["Nombre completo from responsable"]), // Corregido: Leer el texto simple
+    responsable: extractName(f["Nombre completo from responsable de seguimiento"]), // Corregido: Leer el texto simple
     estacion,
     descripcion,
     acciones,
     updates,
     evidencias,
-    pruebas
+    pruebas,
+    rcaData // <- Incluye la data del RCA
   };
 }
 
