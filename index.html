@@ -385,12 +385,13 @@ const formatDate = (iso) => {
   const el = $('#result');
   if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
 
-  // plan de acción
+ // Plan de acción (Limpieza de cualquier marcador de lista o número)
   const acciones = (r.acciones||[])
-    .map(a => String(a).replace(/^[•\-\*]\s*/,'').trim())
+    // Esta línea limpia cualquier * -, o número + punto (1., 2.) al inicio de la línea.
+    .map(a => String(a).replace(/^(?:[*-]|\d+\.)\s*/, '').trim()) 
     .filter(Boolean)
     .map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
-
+      
   // --- Notas de actualización (Corrección de formato) ---
   const updates  = (r.updates||[])
     .filter(u=>u && (u.texto||'').trim()!=='')
