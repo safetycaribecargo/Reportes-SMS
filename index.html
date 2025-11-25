@@ -391,9 +391,10 @@ const formatDate = (iso) => {
     .filter(Boolean)
     .map(a=>`<li>${a}</li>`).join('') || '<em>—</em>';
 
+  // --- Notas de actualización (Corrección de formato) ---
   const updates  = (r.updates||[])
     .filter(u=>u && (u.texto||'').trim()!=='')
-    .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto}</li>`)
+    .map(u=>`<li><time>${formatDate(u.fecha)}</time> ${u.texto.replace(/\n/g, '<br>')}</li>`) // <--- AQUÍ ESTÁ LA CORRECCIÓN
     .join('') || '<li><em>Sin actualizaciones</em></li>';
 
   const statusCls = statusClass(r.estado);
