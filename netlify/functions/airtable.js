@@ -23,7 +23,7 @@ return { statusCode: 400, headers: common, body: JSON.stringify({ error: 'Missin
 
 const BASE_ID = 'appDSjIPinS4TgaHF';
 const TABLE = 'Registros Safety';
-const FIELD_ID = 'ID del reporte';
+const FIELD_ID = 'ID del reporte (texto)';
 
 
 const token = process.env.AIRTABLE_PAT;
