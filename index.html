@@ -491,6 +491,45 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
         }</div>
       </section>
     </div>
+<div class="grid">
+
+  <!-- CAUSA RAÍZ -->
+  <section class="card">
+    <div class="hd">Causa raíz</div>
+    <div class="bd">
+      <div class="list">
+        <div class="k">ID RCA</div><div class="v">${r.rca_id || "—"}</div>
+        <div class="k">Evento / Desviación</div><div class="v">${r.rca_evento || "—"}</div>
+        <div class="k">Descripción del problema</div><div class="v">${r.rca_descripcion || "—"}</div>
+        <div class="k">Por qué’s (Análisis)</div><div class="v">${r.rca_analisis || "—"}</div>
+        <div class="k">Causa raíz identificada</div><div class="v">${r.rca_causa || "—"}</div>
+        <div class="k">Factores contribuyentes</div><div class="v">${r.rca_factores || "—"}</div>
+        <div class="k">Soluciones propuestas</div><div class="v">${r.rca_soluciones || "—"}</div>
+        <div class="k">Responsable</div><div class="v">${r.rca_responsable || "—"}</div>
+        <div class="k">Fecha</div><div class="v">${formatDate(r.rca_fecha) || "—"}</div>
+        <div class="k">Creado por</div><div class="v">${r.rca_creador || "—"}</div>
+        <div class="k">Aprobado por</div><div class="v">${r.rca_aprobado || "—"}</div>
+        <div class="k">Estación</div><div class="v">${r.rca_estacion || "—"}</div>
+        <div class="k">Número de vuelo</div><div class="v">${r.rca_vuelo || "—"}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DETALLES DEL REPORTE -->
+  <section class="card">
+    <div class="hd">Detalles del reporte</div>
+    <div class="bd">
+      <div class="list">
+        <div class="k">Tipo de evento</div><div class="v">${r.tipo_evento || "—"}</div>
+        <div class="k">Severidad</div><div class="v">${r.severidad || "—"}</div>
+        <div class="k">Probabilidad</div><div class="v">${r.probabilidad || "—"}</div>
+        <div class="k">Nivel de riesgo</div><div class="v">${r.nivel_riesgo || "—"}</div>
+        <div class="k">Mitigación requerida</div><div class="v">${r.mitigacion || "—"}</div>
+        <div class="k">Clasificación</div><div class="v">${r.clasificacion || "—"}</div>
+      </div>
+    </div>
+  </section>
+</div>
 
     <div class="grid">
       <section class="card">
