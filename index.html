@@ -388,6 +388,7 @@ const formatDate = (iso) => {
 
     // ===== Render =====
     function renderReport(r){
+    const c = r.rca || {};
   const el = $('#result');
   if(!r){ ui.show("No se encontró ningún reporte con ese ID."); return; }
 
