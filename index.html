@@ -290,7 +290,13 @@ function closeLightbox(){
     if (h.endsWith('.vercel.app')) return '/api/airtable';   // Vercel
     return '/.netlify/functions/airtable';                   // Netlify
   })();
-
+    
+  const FN_RCA = (() => {
+    const h = location.hostname;
+    if (h.endsWith('.vercel.app')) return '/api/airtableRCA';
+    return '/.netlify/functions/airtableRCA';
+  })();
+    
 const $ = (s) => document.querySelector(s);
 
   // Helper para mostrar mensajes
