@@ -11,7 +11,7 @@ exports.handler = async (event) => {
     }
 
     const BASE_ID = 'appDSjIPinS4TgaHF';
-    const TABLE = 'RCA';
+    const TABLE = 'Causa Raíz (RCA)';
     const LINK_FIELD = 'ID del reporte';   // EXACTO como está en Airtable
 
     const token = process.env.AIRTABLE_PAT;
