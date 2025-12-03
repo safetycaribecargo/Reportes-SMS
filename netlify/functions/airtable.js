@@ -45,8 +45,11 @@ return { statusCode: res.status, headers: common, body: JSON.stringify({ error: 
 
 
 const data = JSON.parse(text);
+  
+console.log("DEBUG FIELDS:", data.records[0].fields);
+
 if (!data.records || data.records.length === 0) {
-return { statusCode: 404, headers: common, body: JSON.stringify({ error: 'Not found' }) };
+  return { statusCode: 404, headers: common, body: JSON.stringify({ error: 'Not found' }) };
 }
 
 
