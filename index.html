@@ -741,6 +741,18 @@ if (Array.isArray(evidRaw)) {
         }finally{
           btn.textContent = old; btn.disabled = false;
         }
+        async function fetchRCA(id) {
+          try {
+            const res = await fetch(`${FN_RCA}?id=${encodeURIComponent(id)}`);
+            if (!res.ok) return null;
+        
+            const data = await res.json();
+            return data.fields || null;
+          } catch (err) {
+            console.error("RCA error:", err);
+            return null;
+          }
+        }
       });
     });
   })();
