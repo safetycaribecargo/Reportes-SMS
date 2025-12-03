@@ -735,7 +735,13 @@ if (Array.isArray(evidRaw)) {
 
         try{
           const data = await fetchReport(id);
-          if (data) renderReport(data);
+          const rca = await fetchRCA(id);
+          
+          if (data) {
+            data.rca = rca;
+            renderReport(data);
+          }
+
         }catch(err){
           ui.show(`❌ Error inesperado.<br><small>${err.message}</small>`);
         }finally{
