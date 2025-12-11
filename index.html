@@ -942,5 +942,18 @@ if (Array.isArray(evidRaw)) {
     });
   })();
   </script>
+  <script>
+function onSearch(){
+    const id = document.querySelector("#reportId").value.trim();
+
+    if(!id){
+        alert("Debe ingresar un ID");
+        return;
+    }
+
+    fetchReport(id);
+}
+</script>
+
 </body>
 </html>
