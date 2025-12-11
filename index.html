@@ -588,13 +588,165 @@ if (esCerrado && Array.isArray(r.pruebas) && r.pruebas.length){
     });
 }
     
-    // ===== Fetch a Netlify Function (FUNCIÓN CON CORRECCIONES) =====
-    async function fetchReport(id){
-      const url = `${FN_URL}?id=${encodeURIComponent(id)}`;
-      let resp, text;
-      try{
-        resp = await fetch(url, { headers: { 'Accept': 'application/json' }});
-        text = await resp.text();
+    // ===== Fetch unificado: prueba primero RCA, después Reportes =====
+async function fetchReport(id) {
+  // Endpoints
+  const endpoints = [
+    `${FN_RCA}?id=${encodeURIComponent(id)}`,   // 1) Buscar RCA primero
+    `${FN_URL}?id=${encodeURIComponent(id)}`    // 2) Si no está, buscar Reportes
+  ];
+
+  let data = null;
+
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url, { headers: { "Accept": "application/json" }});
+      const text = await resp.text();
+
+      if (!resp.ok) {
+        // Si falla este endpoint, pasamos al siguiente
+        console.warn("Endpoint falló:", url, text);
+        continue;
+      }
+
+      const json = JSON.parse(text);
+
+      // Normalizamos para aceptar diferentes formatos de respuesta
+      const fields =
+        json?.fields ||
+        json?.record?.fields ||
+        json?.records?.[0]?.fields ||
+        null;
+
+      if (fields) {
+        data = { fields };
+        break; // YA LO ENCONTRAMOS — detener bucle
+      }
+    } catch (e) {
+      console.error("Error en", url, e);
+      continue; // seguir con siguiente endpoint
+    }
+  }
+
+  if (!data) {
+    ui.show(`❌ No se encontró este reporte en ninguna tabla (RCA / Reportes).`);
+    return null;
+  }
+
+  const f = data.fields;
+
+  // --- a partir de aquí, todo sigue igual que tu función original ---
+  // Copié estas líneas desde tu código sin cambiarlas
+  const acciones =
+    Array.isArray(f["Plan de acción propuesto"]) ? f["Plan de acción propuesto"]
+    : f["Plan de acción propuesto"] ? segmentParagraphs(String(f["Plan de acción propuesto"]))
+    : Array.isArray(f["Acciones tomadas"]) ? f["Acciones tomadas"]
+    : f["Acciones tomadas"] ? segmentParagraphs(String(f["Acciones tomadas"]))
+    : [];
+
+  let updates = [];
+  const updRaw = f["Notas de actualización"] ?? f["Notas"];
+  if (Array.isArray(updRaw)) {
+    updates = updRaw.flatMap(t => segmentParagraphs(String(t)).map(p => ({ texto: p, fecha: "" })));
+  } else if (updRaw) {
+    updates = segmentParagraphs(String(updRaw)).map(p => ({ texto: p, fecha: "" }));
+  }
+
+  const cierreRaw =
+    f["Fecha estimada de cierre"] ??
+    f["Fecha Estimada de Cierre"] ?? "";
+  const cierre =
+    (cierreRaw && typeof cierreRaw === "object" && cierreRaw.start)
+      ? cierreRaw.start
+      : cierreRaw;
+
+  const cierreRealRaw =
+    f["Fecha real de cierre"] ??
+    f["Fecha Real de Cierre"] ?? "";
+  const cierreEfectivo =
+    (cierreRealRaw && typeof cierreRealRaw === "object" && cierreRealRaw.start)
+      ? cierreRealRaw.start
+      : cierreRealRaw;
+
+  const responsablePrincipal = f["Nombre Completo (from Responsable)"] || "";
+  const responsableSeg = f["Nombre Completo (from Responsable del seguimiento)"] || "";
+  
+  const descripcion =
+    f["Descripción del Suceso"] || f["Descripción del suceso"] || f["Descripcion del Suceso"] ||
+    f["Descripción"] || f["Descripcion"] || "";
+  
+  const estacion = f["Estación"] || f["Estación/Área"] || "";
+  const fecha = f["Fecha de ingreso del reporte (Sistema)"] || f["Fecha de Evento"] || f["Fecha"] || "";
+
+  const pruebas = Array.isArray(f["Pruebas de cierre"])
+    ? f["Pruebas de cierre"].map(a => ({
+        url: a.url || a?.thumbnails?.large?.url || a?.thumbnails?.full?.url || "",
+        filename: a.filename || "Prueba de cierre"
+      })).filter(x => x.url)
+    : [];
+
+  let evidencias = [];
+  const evidKey = Object.keys(f).find(k => /evidenc/i.test(k)) || "Evidencias";
+  const evidRaw = f[evidKey];
+
+  if (Array.isArray(evidRaw)) {
+    evidencias = evidRaw.map(a => {
+      if (typeof a === "string") {
+        return { url: a.trim(), filename: "Evidencia" };
+      }
+      const url =
+        a?.url ||
+        a?.thumbnails?.large?.url ||
+        a?.thumbnails?.full?.url ||
+        "";
+      const filename = a?.filename || a?.name || "Evidencia";
+      return url ? { url, filename } : null;
+    }).filter(Boolean);
+  } else if (typeof evidRaw === "string") {
+    evidencias = evidRaw
+      .split(/[\n,]+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(u => ({ url: u, filename: "Evidencia" }));
+  }
+
+  return {
+    id: f["ID del reporte"] || id,
+    fecha,
+    cierre,
+    cierreEfectivo,
+    estado: f["Estado del reporte"] || f["Estado"] || "—",
+    responsablePrincipal,
+    responsable: responsableSeg,
+    estacion,
+    descripcion,
+    acciones,
+    updates,
+    evidencias,
+    pruebas,
+
+    rca_id: f["ID RCA"],
+    rca_evento: f["Evento/Desviación"],
+    rca_descripcion: f["Descripción del Problema"],
+    rca_analisis: f["Por qué's? Análisis"],
+    rca_causa: f["Causa Raíz Identificada"],
+    rca_factores: f["Factores contribuyentes"],
+    rca_soluciones: f["Soluciones Propuestas"],
+    rca_responsable: f["Nombre Completo (from Responsable)"],
+    rca_fecha: f["Fecha"],
+    rca_creador: f["Creado por (from creado por)"],
+    rca_aprobado: f["Aprobado por (from aprobado)"],
+    rca_estacion: f["Estación"],
+    rca_vuelo: f["Numero de Vuelo"],
+    tipo_evento: f["Tipo de evento"],
+    severidad: f["Severidad"],
+    probabilidad: f["Probabilidad"],
+    nivel_riesgo: f["Nivel de riesgo"],
+    mitigacion: f["Mitigación Requerida (Matriz)"],
+    clasificacion: f["Clasificación"],
+  };
+}
+
     }catch(err){
       ui.show(`❌ No se pudo conectar con el servidor.<br><small>${err.message}</small>`);
       return null;
